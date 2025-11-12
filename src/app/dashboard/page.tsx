@@ -1,65 +1,68 @@
-'use client';
+// src/app/dashboard/page.tsx
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import { useOrders } from '@/contexts/OrderContext';
-import DashboardHeader from '@/components/DashboardHeader';
-import OrderFilters, { FilterState } from '@/components/OrderFilters';
-import OrderTable from '@/components/OrderTable';
-import { Button } from '@/components/ui/button';
-import { Order } from '@/types/order';
-import { differenceInDays } from 'date-fns';
-import { FileSpreadsheet, FileText } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useEffect, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import DashboardHeader from "@/components/DashboardHeader";
+import OrderFilters, { FilterState } from "@/components/OrderFilters";
+import OrderTable from "@/components/OrderTable";
+import { Button } from "@/components/ui/button";
+import { Order } from "@/types/order";
+import { differenceInDays } from "date-fns";
+import { FileSpreadsheet, FileText } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Page() {
   const { role } = useAuth();
-  const router = useRouter();
   const { toast } = useToast();
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
 
-  useEffect(() => {
-    if (!role) {
-      router.push('/');
-    }
-  }, [role, router]);
+  // NO redirect logic - middleware handles it
 
   useEffect(() => {
     // Load orders from API (Mongo) and adapt to UI Order shape
     const load = async () => {
       try {
-        const res = await fetch('/api/orders', { cache: 'no-store' });
-        const docs = await res.json();
-        const mapped: Order[] = (docs || []).map((o: any) => ({
-          id: (o?._id && (typeof o._id === 'string' ? o._id : o._id.toString())) || String(o.shopifyId),
-          orderNumber: String((o.name || o.shopifyId || '')).replace(/^#/, ''),
-          orderDate: o.processedAt ? new Date(o.processedAt) : new Date(o.createdAt || Date.now()),
-          store: (`.${o.storeKey || 'nl'}`) as any,
+        const res = await fetch("/api/orders", { cache: "no-store" });
+        const data = await res.json();
+
+        // Handle API response structure { success: true, orders: [...] }
+        const docs = data.orders || [];
+
+        const mapped: Order[] = docs.map((o: any) => ({
+          id:
+            (o?._id &&
+              (typeof o._id === "string" ? o._id : o._id.toString())) ||
+            String(o.shopifyId),
+          orderNumber: String(o.name || o.shopifyId || "").replace(/^#/, ""),
+          orderDate: o.processedAt
+            ? new Date(o.processedAt)
+            : new Date(o.createdAt || Date.now()),
+          store: `.${o.storeKey || "nl"}` as any,
           items: (o.lineItems || []).map((li: any, idx: number) => ({
             id: String(li.id || `${o.shopifyId}-${idx + 1}`),
             width: 0,
             height: 0,
-            profileColor: '',
-            orientation: '',
-            installationType: '',
-            thresholdType: '',
-            meshType: '',
-            curtainType: '',
-            fabricColor: '',
-            closureType: '',
-            mountingType: '',
+            profileColor: "",
+            orientation: "",
+            installationType: "",
+            thresholdType: "",
+            meshType: "",
+            curtainType: "",
+            fabricColor: "",
+            closureType: "",
+            mountingType: "",
             frameCutComplete: false,
             meshCutComplete: false,
-            status: 'Pending',
+            status: "Pending",
           })),
           boxes: [],
         }));
         setAllOrders(mapped);
         setFilteredOrders(mapped);
       } catch (e) {
-        // ignore for now, UI will show empty state
+        console.error("Failed to load orders:", e);
       }
     };
     load();
@@ -75,44 +78,48 @@ export default function Page() {
     let filtered = [...allOrders];
 
     if (filters.orderNumber) {
-      filtered = filtered.filter(order =>
-        order.orderNumber.toLowerCase().includes(filters.orderNumber.toLowerCase())
+      filtered = filtered.filter((order) =>
+        order.orderNumber
+          .toLowerCase()
+          .includes(filters.orderNumber.toLowerCase())
       );
     }
 
     if (filters.stores.length > 0) {
-      filtered = filtered.filter(order => filters.stores.includes(order.store));
+      filtered = filtered.filter((order) =>
+        filters.stores.includes(order.store)
+      );
     }
 
     if (filters.statuses.length > 0) {
-      filtered = filtered.filter(order =>
-        order.items.some(item => filters.statuses.includes(item.status))
+      filtered = filtered.filter((order) =>
+        order.items.some((item) => filters.statuses.includes(item.status))
       );
     }
 
     if (filters.dateFrom) {
       const fromDate = new Date(filters.dateFrom);
-      filtered = filtered.filter(order => order.orderDate >= fromDate);
+      filtered = filtered.filter((order) => order.orderDate >= fromDate);
     }
 
     if (filters.dateTo) {
       const toDate = new Date(filters.dateTo);
       toDate.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(order => order.orderDate <= toDate);
+      filtered = filtered.filter((order) => order.orderDate <= toDate);
     }
 
-    if (filters.deadlineStatus !== 'all') {
+    if (filters.deadlineStatus !== "all") {
       const today = new Date();
-      filtered = filtered.filter(order => {
+      filtered = filtered.filter((order) => {
         const deadline = getDeadline(order.orderDate);
         const daysLeft = differenceInDays(deadline, today);
 
         switch (filters.deadlineStatus) {
-          case 'overdue':
+          case "overdue":
             return daysLeft < 0;
-          case 'today':
+          case "today":
             return daysLeft === 0;
-          case 'week':
+          case "week":
             return daysLeft >= 0 && daysLeft <= 7;
           default:
             return true;
@@ -123,36 +130,42 @@ export default function Page() {
     setFilteredOrders(filtered);
   };
 
-  const handleExport = (format: 'excel' | 'pdf') => {
+  const handleExport = (format: "excel" | "pdf") => {
     toast({
-      title: 'Coming Soon',
+      title: "Coming Soon",
       description: `Export functionality for ${format.toUpperCase()} format will be available soon.`,
     });
   };
 
-  if (!role) {
-    return null;
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <DashboardHeader />
-      
+
       <main className="container mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">Orders Overview</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-2">
+              Orders Overview
+            </h2>
             <p className="text-muted-foreground">
               Manage and track all manufacturing orders
             </p>
           </div>
 
           <div className="flex gap-2">
-            <Button onClick={() => handleExport('excel')} variant="outline" className="gap-2">
+            <Button
+              onClick={() => handleExport("excel")}
+              variant="outline"
+              className="gap-2"
+            >
               <FileSpreadsheet className="h-4 w-4" />
               Export Excel
             </Button>
-            <Button onClick={() => handleExport('pdf')} variant="outline" className="gap-2">
+            <Button
+              onClick={() => handleExport("pdf")}
+              variant="outline"
+              className="gap-2"
+            >
               <FileText className="h-4 w-4" />
               Export PDF
             </Button>
@@ -160,11 +173,9 @@ export default function Page() {
         </div>
 
         <OrderFilters onFilterChange={handleFilterChange} />
-        
+
         <OrderTable orders={filteredOrders} />
       </main>
     </div>
   );
 }
-
-

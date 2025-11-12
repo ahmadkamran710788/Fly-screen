@@ -1,25 +1,49 @@
-'use client';
+// src/app/login/page.tsx
+"use client";
+import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Factory, Loader2, Eye, EyeOff } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import { Role } from '@/types/order';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Factory } from 'lucide-react';
-
-export default function Page() {
-  const [selectedRole, setSelectedRole] = useState<Role | ''>('');
+export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
-  const router = useRouter();
 
-  const roles: Role[] = ['Admin', 'Frame Cutting', 'Mesh Cutting', 'Quality'];
+  // NO redirect logic - middleware handles it
 
-  const handleLogin = () => {
-    if (selectedRole) {
-      login(selectedRole as Role);
-      router.push('/dashboard');
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log("🔐 Form submitted");
+    setError("");
+    setIsLoading(true);
+
+    try {
+      console.log("📤 Calling login...");
+      await login(email, password);
+      console.log("✅ Login complete");
+      // Router push to dashboard is handled in login function
+      // Middleware will ensure proper redirect
+    } catch (err) {
+      console.error("❌ Login error:", err);
+      setError(
+        err instanceof Error ? err.message : "Login failed. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -32,44 +56,88 @@ export default function Page() {
               <Factory className="h-8 w-8 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-bold">Manufacturing Dashboard</CardTitle>
+          <CardTitle className="text-3xl font-bold">
+            Manufacturing Dashboard
+          </CardTitle>
           <CardDescription className="text-base">
-            Select your department to continue
+            Sign in to access your department
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Department / Role</label>
-            <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as Role)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Choose your department..." />
-              </SelectTrigger>
-              <SelectContent>
-                {roles.map((role) => (
-                  <SelectItem key={role} value={role}>
-                    {role}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <CardContent>
+          <form onSubmit={handleLogin} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-          <Button 
-            onClick={handleLogin} 
-            disabled={!selectedRole}
-            className="w-full"
-            size="lg"
-          >
-            Continue to Dashboard
-          </Button>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="admin@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={isLoading}
+                autoComplete="email"
+              />
+            </div>
 
-          <div className="text-center text-sm text-muted-foreground">
-            <p>Demo Mode - No authentication required</p>
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  autoComplete="current-password"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  disabled={isLoading}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isLoading || !email || !password}
+              className="w-full"
+              size="lg"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                "Sign In"
+              )}
+            </Button>
+
+            <div className="text-center text-sm text-muted-foreground space-y-1">
+              <p className="font-medium">Demo Credentials:</p>
+              <p className="text-xs">Email: admin@company.com</p>
+              <p className="text-xs">Password: admin123</p>
+            </div>
+          </form>
         </CardContent>
       </Card>
     </div>
   );
 }
-
-

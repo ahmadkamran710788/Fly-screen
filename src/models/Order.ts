@@ -23,6 +23,7 @@ const OrderSchema = new Schema(
       phone: String,
       tags: [String],
     },
+    status: { type: String, default: "Pending" },
     lineItems: [
       {
         id: String,
@@ -42,12 +43,10 @@ const OrderSchema = new Schema(
     cancelledAt: Date,
     closedAt: Date,
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 export type Order = InferSchemaType<typeof OrderSchema>;
 
 export const OrderModel: Model<Order> =
   mongoose.models.Order || mongoose.model<Order>("Order", OrderSchema);
-
-
