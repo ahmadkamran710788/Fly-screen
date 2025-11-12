@@ -11,6 +11,7 @@ export interface JWTPayload {
   email: string;
   role: Role;
   name: string;
+  [key: string]: unknown;
 }
 
 const EXPIRES_IN = "7d"; // You can also use seconds (e.g., "604800s")

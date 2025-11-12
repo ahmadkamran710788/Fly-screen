@@ -116,6 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log("✅ ============Logged out successfully");
 
       // Navigate to login - middleware will handle if already there
+      window.location.href = "/login";
       router.push("/login");
       router.refresh(); // Force a refresh to clear any cached state
     } catch (error) {

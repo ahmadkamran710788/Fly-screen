@@ -14,7 +14,8 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute = publicRoutes.includes(pathname);
 
   // Protected routes that require authentication
-  const isProtectedRoute = pathname.startsWith("/dashboard");
+  const isProtectedRoute =
+    pathname.startsWith("/dashboard") || pathname.startsWith("/orders");
 
   // Allow API routes to pass through (they handle their own auth)
   if (pathname.startsWith("/api/")) {
