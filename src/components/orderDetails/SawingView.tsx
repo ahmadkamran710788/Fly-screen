@@ -25,8 +25,8 @@ const SawingView = ({ item, store, itemNumber }: SawingViewProps) => {
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>Item {itemNumber} - Sawing (Frame Cutting)</span>
-          <Badge variant={item.frameCutComplete ? 'default' : 'secondary'}>
-            {item.frameCutComplete ? 'Frame Cut Complete' : 'Pending'}
+          <Badge variant={item.frameCuttingStatus === 'Ready to Package' ? 'default' : 'secondary'}>
+            {item.frameCuttingStatus}
           </Badge>
         </CardTitle>
       </CardHeader>

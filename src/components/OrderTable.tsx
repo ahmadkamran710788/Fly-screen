@@ -119,21 +119,19 @@ const OrderTable = ({ orders: initialOrders }: OrderTableProps) => {
   };
 
   const getOverallStatus = (order: Order) => {
-    const allShipped = order.items?.every((item) => item.status === "Shipped");
-    const allPacked = order.items?.every(
-      (item) => item.status === "Packed" || item.status === "Shipped"
-    );
-    const allReady = order.items?.every(
+    // Check if all items have qualityStatus === "Packed"
+    const allPacked = order.items?.every((item) => item.qualityStatus === "Packed");
+
+    // Check if all items are still pending (all 3 statuses are pending)
+    const allPending = order.items?.every(
       (item) =>
-        item.status === "Ready for Packaging" ||
-        item.status === "Packed" ||
-        item.status === "Shipped"
+        item.frameCuttingStatus === "Pending" &&
+        item.meshCuttingStatus === "Pending" &&
+        item.qualityStatus === "Pending"
     );
 
-    if (allShipped) return { text: "Shipped", variant: "default" as const };
-    if (allPacked) return { text: "Packed", variant: "default" as const };
-    if (allReady)
-      return { text: "Ready for Packaging", variant: "secondary" as const };
+    if (allPacked) return { text: "Completed", variant: "default" as const };
+    if (allPending) return { text: "Pending", variant: "secondary" as const };
     return { text: "In Progress", variant: "outline" as const };
   };
 
@@ -197,30 +195,10 @@ const OrderTable = ({ orders: initialOrders }: OrderTableProps) => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead
-                className="cursor-pointer hover:bg-muted/50 select-none"
-                onClick={() => handleSort("orderNumber")}
-              >
-                Order Number <SortIcon field="orderNumber" />
-              </TableHead>
-              <TableHead
-                className="cursor-pointer hover:bg-muted/50 select-none"
-                onClick={() => handleSort("createdAt")}
-              >
-                Order Date <SortIcon field="createdAt" />
-              </TableHead>
-              <TableHead
-                className="cursor-pointer hover:bg-muted/50 select-none"
-                onClick={() => handleSort("storeKey")}
-              >
-                Store <SortIcon field="storeKey" />
-              </TableHead>
-              <TableHead
-                className="cursor-pointer hover:bg-muted/50 select-none"
-                onClick={() => handleSort("status")}
-              >
-                Status <SortIcon field="status" />
-              </TableHead>
+              <TableHead>Order Number</TableHead>
+              <TableHead>Order Date</TableHead>
+              <TableHead>Store</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Items</TableHead>
               <TableHead>Deadline</TableHead>
               <TableHead>Action</TableHead>
@@ -239,8 +217,14 @@ const OrderTable = ({ orders: initialOrders }: OrderTableProps) => {
             ) : (
               orders.map((order) => {
                 const status = getOverallStatus(order);
-                const orderDate = new Date(order.orderDate || order.createdAt);
+                const orderDate = new Date(
+                  (order as any).orderDate ??
+                    (order as any).createdAt ??
+                    Date.now()
+                );
                 const deadline = getDeadlineStatus(orderDate);
+                const itemCount =
+                  order.items?.length ?? (order as any).lineItems?.length ?? 0;
 
                 return (
                   <TableRow key={order.id} className="hover:bg-muted/30">
@@ -250,18 +234,14 @@ const OrderTable = ({ orders: initialOrders }: OrderTableProps) => {
                     <TableCell>{format(orderDate, "dd/MM/yyyy")}</TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        {order.store || order.storeKey}
+                        {order.store || (order as any).storeKey}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant={status.variant}>{status.text}</Badge>
                     </TableCell>
                     <TableCell>
-                      {order.items?.length || order.lineItems?.length || 0} item
-                      {(order.items?.length || order.lineItems?.length || 0) !==
-                      1
-                        ? "s"
-                        : ""}
+                      {itemCount} item{itemCount !== 1 ? "s" : ""}
                     </TableCell>
                     <TableCell>
                       <Badge variant={deadline.variant}>{deadline.text}</Badge>

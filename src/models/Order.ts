@@ -23,7 +23,11 @@ const OrderSchema = new Schema(
       phone: String,
       tags: [String],
     },
-    status: { type: String, default: "Pending" },
+    status: {
+      type: String,
+      enum: ["Pending", "In Progress", "Completed"],
+      default: "Pending",
+    },
     lineItems: [
       {
         id: String,
@@ -34,6 +38,33 @@ const OrderSchema = new Schema(
         quantity: Number,
         price: String,
         sku: String,
+        // Three separate statuses per item
+        frameCuttingStatus: {
+          type: String,
+          enum: ["Pending", "Ready to Package"],
+          default: "Pending",
+        },
+        meshCuttingStatus: {
+          type: String,
+          enum: ["Pending", "Ready to Package"],
+          default: "Pending",
+        },
+        qualityStatus: {
+          type: String,
+          enum: ["Pending", "Ready to Package", "Packed"],
+          default: "Pending",
+        },
+      },
+    ],
+    boxes: [
+      {
+        id: String,
+        length: Number,
+        width: Number,
+        height: Number,
+        weight: Number,
+        items: [String], // Array of item IDs in this box
+        createdAt: { type: Date, default: Date.now },
       },
     ],
     shippingAddress: Schema.Types.Mixed,

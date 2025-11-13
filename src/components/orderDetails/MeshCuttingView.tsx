@@ -26,8 +26,8 @@ const MeshCuttingView = ({ item, store, itemNumber }: MeshCuttingViewProps) => {
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>Item {itemNumber} - Mesh Cutting</span>
-          <Badge variant={item.meshCutComplete ? 'default' : 'secondary'}>
-            {item.meshCutComplete ? 'Mesh Cut Complete' : 'Pending'}
+          <Badge variant={item.meshCuttingStatus === 'Ready to Package' ? 'default' : 'secondary'}>
+            {item.meshCuttingStatus}
           </Badge>
         </CardTitle>
       </CardHeader>

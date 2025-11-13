@@ -4,9 +4,9 @@ import { Order, OrderItem, Box } from '@/types/order';
 interface OrderContextType {
   orders: Order[];
   getOrder: (id: string) => Order | undefined;
-  updateItemStatus: (orderId: string, itemId: string, updates: Partial<OrderItem>) => void;
-  addBox: (orderId: string, box: Omit<Box, 'id'>) => void;
-  deleteBox: (orderId: string, boxId: string) => void;
+  updateItemStatus: (orderId: string, itemId: string, updates: Partial<OrderItem>) => Promise<void>;
+  addBox: (orderId: string, box: Omit<Box, 'id'>) => Promise<void>;
+  deleteBox: (orderId: string, boxId: string) => Promise<void>;
   addOrder: (order: Omit<Order, 'id' | 'boxes'>) => void;
   deleteOrder: (orderId: string) => void;
 }
@@ -21,7 +21,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return orders.find(order => order.id === id);
   };
 
-  const updateItemStatus = (orderId: string, itemId: string, updates: Partial<OrderItem>) => {
+  const updateItemStatus = async (orderId: string, itemId: string, updates: Partial<OrderItem>) => {
+    // Optimistic update
     setOrders(prevOrders =>
       prevOrders.map(order => {
         if (order.id !== orderId) return order;
@@ -30,56 +31,109 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           ...order,
           items: order.items.map(item => {
             if (item.id !== itemId) return item;
-
-            const updatedItem = { ...item, ...updates };
-
-            // Auto-set "Ready for Packaging" when both frame and mesh are complete
-            if (updatedItem.frameCutComplete && updatedItem.meshCutComplete) {
-              updatedItem.status = 'Ready for Packaging';
-            } else if (updatedItem.frameCutComplete) {
-              updatedItem.status = 'Frame Cut Complete';
-            } else if (updatedItem.meshCutComplete) {
-              updatedItem.status = 'Mesh Cut Complete';
-            } else {
-              updatedItem.status = 'Pending';
-            }
-
-            return updatedItem;
+            return { ...item, ...updates };
           }),
         };
       })
     );
+
+    // Persist to backend
+    try {
+      const response = await fetch(`/api/orders/${orderId}/items/${itemId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update item status');
+      }
+
+      const result = await response.json();
+      console.log('Item status updated successfully:', result);
+    } catch (error) {
+      console.error('Error updating item status:', error);
+      // Could implement revert logic here if needed
+    }
   };
 
-  const addBox = (orderId: string, box: Omit<Box, 'id'>) => {
+  const addBox = async (orderId: string, box: Omit<Box, 'id'>) => {
+    // Optimistic update
+    const tempBox: Box = {
+      ...box,
+      id: `box-${Date.now()}`,
+    };
+
     setOrders(prevOrders =>
       prevOrders.map(order => {
         if (order.id !== orderId) return order;
-
-        const newBox: Box = {
-          ...box,
-          id: `box-${Date.now()}`,
-        };
-
         return {
           ...order,
-          boxes: [...order.boxes, newBox],
+          boxes: [...order.boxes, tempBox],
         };
       })
     );
+
+    // Persist to backend
+    try {
+      const response = await fetch(`/api/orders/${orderId}/boxes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(box),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add box');
+      }
+
+      const result = await response.json();
+      console.log('Box added successfully:', result);
+    } catch (error) {
+      console.error('Error adding box:', error);
+      // Revert optimistic update
+      setOrders(prevOrders =>
+        prevOrders.map(order => {
+          if (order.id !== orderId) return order;
+          return {
+            ...order,
+            boxes: order.boxes.filter(b => b.id !== tempBox.id),
+          };
+        })
+      );
+    }
   };
 
-  const deleteBox = (orderId: string, boxId: string) => {
+  const deleteBox = async (orderId: string, boxId: string) => {
+    // Optimistic update
     setOrders(prevOrders =>
       prevOrders.map(order => {
         if (order.id !== orderId) return order;
-
         return {
           ...order,
           boxes: order.boxes.filter(box => box.id !== boxId),
         };
       })
     );
+
+    // Persist to backend
+    try {
+      const response = await fetch(`/api/orders/${orderId}/boxes/${boxId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete box');
+      }
+
+      console.log('Box deleted successfully');
+    } catch (error) {
+      console.error('Error deleting box:', error);
+      // Could implement revert logic here if needed
+    }
   };
 
   const addOrder = (order: Omit<Order, 'id' | 'boxes'>) => {

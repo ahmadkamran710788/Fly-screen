@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardHeader from "@/components/DashboardHeader";
@@ -21,7 +21,8 @@ import {
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { ItemStatus } from "@/types/order";
+import { FrameCuttingStatus, MeshCuttingStatus, QualityStatus } from "@/types/order";
+import { useOrderSync } from "@/hooks/useOrderSync";
 
 export default function Page() {
   const params = useParams<{ id: string }>();
@@ -36,6 +37,39 @@ export default function Page() {
     console.log("role", role);
     // if (!role) router.push('/');
   }, [role, router]);
+
+  // Handle real-time updates from other users
+  const handleOrderUpdate = useCallback((event: any) => {
+    console.log("Real-time update received:", event);
+
+    if (event.type === "itemStatusUpdated") {
+      setOrder((prev: any) => {
+        if (!prev) return prev;
+
+        return {
+          ...prev,
+          items: prev.items.map((item: any) =>
+            item.id === event.itemId
+              ? {
+                  ...item,
+                  frameCuttingStatus: event.frameCuttingStatus ?? item.frameCuttingStatus,
+                  meshCuttingStatus: event.meshCuttingStatus ?? item.meshCuttingStatus,
+                  qualityStatus: event.qualityStatus ?? item.qualityStatus,
+                }
+              : item
+          ),
+        };
+      });
+
+      toast({
+        title: "Order Updated",
+        description: "Item status was updated by another user",
+      });
+    }
+  }, [toast]);
+
+  // Subscribe to real-time updates
+  useOrderSync(params?.id, handleOrderUpdate);
 
   useEffect(() => {
     const load = async () => {
@@ -121,9 +155,9 @@ export default function Page() {
                 getProp(props, "Montagewijze") ||
                 getProp(props, "Montaj") ||
                 "",
-              frameCutComplete: li.frameCutComplete || false,
-              meshCutComplete: li.meshCutComplete || false,
-              status: (li.status || "Pending") as ItemStatus,
+              frameCuttingStatus: (li.frameCuttingStatus || "Pending") as FrameCuttingStatus,
+              meshCuttingStatus: (li.meshCuttingStatus || "Pending") as MeshCuttingStatus,
+              qualityStatus: (li.qualityStatus || "Pending") as QualityStatus,
               // Include product title and other useful info
               productTitle: li.title || li.name || "",
               quantity: li.quantity || 1,
@@ -178,35 +212,196 @@ export default function Page() {
     );
   }
 
-  const handleStatusChange = (itemId: string, newStatus: ItemStatus) => {
+  const handleFrameCuttingStatusChange = async (
+    itemId: string,
+    newStatus: FrameCuttingStatus
+  ) => {
+    // Optimistic update - update UI immediately
+    const previousStatus = order.items.find((it: any) => it.id === itemId)?.frameCuttingStatus;
     setOrder((prev: any) => {
       if (!prev) return prev;
       return {
         ...prev,
         items: prev.items.map((it: any) =>
-          it.id === itemId
-            ? {
-                ...it,
-                status: newStatus,
-                frameCutComplete:
-                  newStatus === "Frame Cut Complete" ||
-                  newStatus === "Packed" ||
-                  newStatus === "Shipped" ||
-                  it.frameCutComplete,
-                meshCutComplete:
-                  newStatus === "Mesh Cut Complete" ||
-                  newStatus === "Packed" ||
-                  newStatus === "Shipped" ||
-                  it.meshCutComplete,
-              }
-            : it
+          it.id === itemId ? { ...it, frameCuttingStatus: newStatus } : it
         ),
       };
     });
-    toast({
-      title: "Status Updated",
-      description: `Item status changed to ${newStatus}`,
+
+    // Persist to backend
+    try {
+      const response = await fetch(
+        `/api/orders/${params?.id}/items/${itemId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            frameCuttingStatus: newStatus,
+            role: role,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update status");
+      }
+
+      const result = await response.json();
+      console.log("Frame cutting status update result:", result);
+
+      toast({
+        title: "Status Updated",
+        description: `Frame cutting status changed to ${newStatus}`,
+      });
+    } catch (error: any) {
+      console.error("Error updating frame cutting status:", error);
+
+      // Revert optimistic update on error
+      setOrder((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.map((it: any) =>
+            it.id === itemId ? { ...it, frameCuttingStatus: previousStatus } : it
+          ),
+        };
+      });
+
+      toast({
+        title: "Failed to update status",
+        description: error?.message || "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMeshCuttingStatusChange = async (
+    itemId: string,
+    newStatus: MeshCuttingStatus
+  ) => {
+    // Optimistic update - update UI immediately
+    const previousStatus = order.items.find((it: any) => it.id === itemId)?.meshCuttingStatus;
+    setOrder((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.map((it: any) =>
+          it.id === itemId ? { ...it, meshCuttingStatus: newStatus } : it
+        ),
+      };
     });
+
+    // Persist to backend
+    try {
+      const response = await fetch(
+        `/api/orders/${params?.id}/items/${itemId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            meshCuttingStatus: newStatus,
+            role: role,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update status");
+      }
+
+      const result = await response.json();
+      console.log("Mesh cutting status update result:", result);
+
+      toast({
+        title: "Status Updated",
+        description: `Mesh cutting status changed to ${newStatus}`,
+      });
+    } catch (error: any) {
+      console.error("Error updating mesh cutting status:", error);
+
+      // Revert optimistic update on error
+      setOrder((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.map((it: any) =>
+            it.id === itemId ? { ...it, meshCuttingStatus: previousStatus } : it
+          ),
+        };
+      });
+
+      toast({
+        title: "Failed to update status",
+        description: error?.message || "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleQualityStatusChange = async (
+    itemId: string,
+    newStatus: QualityStatus
+  ) => {
+    // Optimistic update - update UI immediately
+    const previousStatus = order.items.find((it: any) => it.id === itemId)?.qualityStatus;
+    setOrder((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.map((it: any) =>
+          it.id === itemId ? { ...it, qualityStatus: newStatus } : it
+        ),
+      };
+    });
+
+    // Persist to backend
+    try {
+      const response = await fetch(
+        `/api/orders/${params?.id}/items/${itemId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            qualityStatus: newStatus,
+            role: role,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update status");
+      }
+
+      const result = await response.json();
+      console.log("Quality status update result:", result);
+
+      toast({
+        title: "Status Updated",
+        description: `Quality status changed to ${newStatus}`,
+      });
+    } catch (error: any) {
+      console.error("Error updating quality status:", error);
+
+      // Revert optimistic update on error
+      setOrder((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.map((it: any) =>
+            it.id === itemId ? { ...it, qualityStatus: previousStatus } : it
+          ),
+        };
+      });
+
+      toast({
+        title: "Failed to update status",
+        description: error?.message || "Please try again",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDeleteOrder = () => {
@@ -229,36 +424,135 @@ export default function Page() {
     }
   };
 
-  const canEditStatus = (status: ItemStatus): boolean => {
+  const handleAddBox = async (box: Omit<any, 'id'>) => {
+    // Optimistic update - add temporary box
+    const tempBox = {
+      ...box,
+      id: `box-${Date.now()}`,
+    };
+
+    setOrder((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        boxes: [...(prev.boxes || []), tempBox],
+      };
+    });
+
+    // Persist to backend
+    try {
+      const response = await fetch(`/api/orders/${params?.id}/boxes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(box),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add box');
+      }
+
+      const result = await response.json();
+      console.log('Box added successfully:', result);
+
+      // Update with real box from server
+      setOrder((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          boxes: prev.boxes.map((b: any) =>
+            b.id === tempBox.id ? result.box : b
+          ),
+        };
+      });
+    } catch (error: any) {
+      console.error('Error adding box:', error);
+
+      // Revert optimistic update on error
+      setOrder((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          boxes: prev.boxes.filter((b: any) => b.id !== tempBox.id),
+        };
+      });
+
+      throw error; // Re-throw so BoxManagement can show error toast
+    }
+  };
+
+  const handleDeleteBox = async (boxId: string) => {
+    // Save current boxes for potential revert
+    const previousBoxes = order?.boxes || [];
+
+    // Optimistic update - remove box immediately
+    setOrder((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        boxes: prev.boxes.filter((b: any) => b.id !== boxId),
+      };
+    });
+
+    // Persist to backend
+    try {
+      const response = await fetch(`/api/orders/${params?.id}/boxes/${boxId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete box');
+      }
+
+      console.log('Box deleted successfully');
+    } catch (error: any) {
+      console.error('Error deleting box:', error);
+
+      // Revert optimistic update on error
+      setOrder((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          boxes: previousBoxes,
+        };
+      });
+
+      throw error; // Re-throw so BoxManagement can show error toast
+    }
+  };
+
+  const canEditFrameCuttingStatus = (item: any): boolean => {
     if (role === "Admin") return true;
-    if (
-      role === "Frame Cutting" &&
-      (status === "Frame Cut Complete" || status === "Pending")
-    )
-      return true;
-    if (
-      role === "Mesh Cutting" &&
-      (status === "Mesh Cut Complete" || status === "Pending")
-    )
-      return true;
-    if (role === "Quality") return true;
+    if (role === "Frame Cutting" && item.qualityStatus !== "Packed") return true;
     return false;
   };
 
-  const getAvailableStatuses = (): ItemStatus[] => {
-    if (role === "Frame Cutting") return ["Pending", "Frame Cut Complete"];
-    if (role === "Mesh Cutting") return ["Pending", "Mesh Cut Complete"];
-    if (role === "Quality" || role === "Admin") {
-      return [
-        "Pending",
-        "Frame Cut Complete",
-        "Mesh Cut Complete",
-        "Ready for Packaging",
-        "Packed",
-        "Shipped",
-      ];
-    }
-    return [];
+  const canEditMeshCuttingStatus = (item: any): boolean => {
+    if (role === "Admin") return true;
+    if (role === "Mesh Cutting" && item.qualityStatus !== "Packed") return true;
+    return false;
+  };
+
+  const canEditQualityStatus = (item: any): boolean => {
+    if (role === "Admin") return true;
+    if (
+      role === "Quality" &&
+      item.frameCuttingStatus === "Ready to Package" &&
+      item.meshCuttingStatus === "Ready to Package"
+    )
+      return true;
+    return false;
+  };
+
+  const getFrameCuttingStatuses = (): FrameCuttingStatus[] => {
+    return ["Pending", "Ready to Package"];
+  };
+
+  const getMeshCuttingStatuses = (): MeshCuttingStatus[] => {
+    return ["Pending", "Ready to Package"];
+  };
+
+  const getQualityStatuses = (): QualityStatus[] => {
+    return ["Pending", "Ready to Package", "Packed"];
   };
 
   return (
@@ -331,25 +625,77 @@ export default function Page() {
                   )}
                 </h4>
                 <div className="flex items-center gap-4">
-                  <span className="text-sm text-muted-foreground">Status:</span>
-                  <Select
-                    value={item.status}
-                    onValueChange={(value) =>
-                      handleStatusChange(item.id, value as ItemStatus)
-                    }
-                    disabled={!canEditStatus(item.status)}
-                  >
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getAvailableStatuses().map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {status}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {(role === "Frame Cutting" || role === "Admin") && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Frame:</span>
+                      <Select
+                        value={item.frameCuttingStatus}
+                        onValueChange={(value) =>
+                          handleFrameCuttingStatusChange(item.id, value as FrameCuttingStatus)
+                        }
+                        disabled={!canEditFrameCuttingStatus(item)}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getFrameCuttingStatuses().map((status) => (
+                            <SelectItem key={status} value={status}>
+                              {status}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {(role === "Mesh Cutting" || role === "Admin") && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Mesh:</span>
+                      <Select
+                        value={item.meshCuttingStatus}
+                        onValueChange={(value) =>
+                          handleMeshCuttingStatusChange(item.id, value as MeshCuttingStatus)
+                        }
+                        disabled={!canEditMeshCuttingStatus(item)}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getMeshCuttingStatuses().map((status) => (
+                            <SelectItem key={status} value={status}>
+                              {status}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {(role === "Quality" || role === "Admin") && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Quality:</span>
+                      <Select
+                        value={item.qualityStatus}
+                        onValueChange={(value) =>
+                          handleQualityStatusChange(item.id, value as QualityStatus)
+                        }
+                        disabled={!canEditQualityStatus(item)}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getQualityStatuses().map((status) => (
+                            <SelectItem key={status} value={status}>
+                              {status}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -401,7 +747,11 @@ export default function Page() {
         </div>
 
         {(role === "Quality" || role === "Admin") && (
-          <BoxManagement order={order} />
+          <BoxManagement
+            order={order}
+            onAddBox={handleAddBox}
+            onDeleteBox={handleDeleteBox}
+          />
         )}
       </main>
     </div>

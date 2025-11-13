@@ -11,12 +11,44 @@ import { differenceInDays } from "date-fns";
 import { FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-async function getOrders(page: number = 1, limit: number = 10) {
+async function getOrders(
+  page: number = 1,
+  limit: number = 10,
+  filters?: FilterState
+) {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-  const response = await fetch(
-    `${baseUrl}/api/orders?page=${page}&limit=${limit}&sortField=createdAt&sortDirection=desc`,
-    { cache: "no-store" }
-  );
+
+  // Build query string with filters
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+    sortField: "createdAt",
+    sortDirection: "desc",
+  });
+
+  // Add filter parameters
+  if (filters?.orderNumber) {
+    params.append("orderNumber", filters.orderNumber);
+  }
+  if (filters?.stores && filters.stores.length > 0) {
+    params.append("stores", filters.stores.join(","));
+  }
+  if (filters?.statuses && filters.statuses.length > 0) {
+    params.append("statuses", filters.statuses.join(","));
+  }
+  if (filters?.dateFrom) {
+    params.append("dateFrom", filters.dateFrom);
+  }
+  if (filters?.dateTo) {
+    params.append("dateTo", filters.dateTo);
+  }
+  if (filters?.deadlineStatus && filters.deadlineStatus !== "all") {
+    params.append("deadlineStatus", filters.deadlineStatus);
+  }
+
+  const response = await fetch(`${baseUrl}/api/orders?${params.toString()}`, {
+    cache: "no-store",
+  });
 
   if (!response.ok) throw new Error("Failed to fetch orders");
   return response.json();
@@ -26,8 +58,7 @@ export default function Page() {
   const { role } = useAuth();
   const { toast } = useToast();
 
-  const [allOrders, setAllOrders] = useState<Order[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Pagination states
@@ -38,12 +69,22 @@ export default function Page() {
   const [hasPrevPage, setHasPrevPage] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
 
+  // Filter state
+  const [currentFilters, setCurrentFilters] = useState<FilterState>({
+    orderNumber: "",
+    stores: [],
+    statuses: [],
+    dateFrom: "",
+    dateTo: "",
+    deadlineStatus: "all",
+  });
+
   // Fetch Orders
   useEffect(() => {
     const loadOrders = async () => {
       try {
         setLoading(true);
-        const data = await getOrders(page, limit);
+        const data = await getOrders(page, limit, currentFilters);
         const docs = data.orders || [];
 
         setTotalPages(data.pagination.totalPages);
@@ -51,11 +92,12 @@ export default function Page() {
         setHasPrevPage(data.pagination.hasPrevPage);
         setTotalCount(data.pagination.totalCount);
 
-        const mapped: Order[] = docs.map((o: any) => ({
+        const mapped: Order[] = docs.map((o: any, index: number) => ({
           id:
             (o?._id &&
               (typeof o._id === "string" ? o._id : o._id.toString())) ||
-            String(o.shopifyId),
+            String(o.shopifyId) ||
+            `order-${index}`,
           orderNumber: String(o.name || o.shopifyId || "").replace(/^#/, ""),
           orderDate: o.processedAt
             ? new Date(o.processedAt)
@@ -74,15 +116,14 @@ export default function Page() {
             fabricColor: "",
             closureType: "",
             mountingType: "",
-            frameCutComplete: false,
-            meshCutComplete: false,
-            status: "Pending",
+            frameCuttingStatus: li.frameCuttingStatus || "Pending",
+            meshCuttingStatus: li.meshCuttingStatus || "Pending",
+            qualityStatus: li.qualityStatus || "Pending",
           })),
           boxes: [],
         }));
 
-        setAllOrders(mapped);
-        setFilteredOrders(mapped);
+        setOrders(mapped);
       } catch (error) {
         console.error("Failed to load orders:", error);
       } finally {
@@ -91,68 +132,12 @@ export default function Page() {
     };
 
     loadOrders();
-  }, [page, limit]);
-
-  const getDeadline = (orderDate: Date) => {
-    const deadline = new Date(orderDate);
-    deadline.setDate(deadline.getDate() + 3);
-    return deadline;
-  };
+  }, [page, limit, currentFilters]);
 
   const handleFilterChange = (filters: FilterState) => {
-    let filtered = [...allOrders];
-
-    if (filters.orderNumber) {
-      filtered = filtered.filter((order) =>
-        order.orderNumber
-          .toLowerCase()
-          .includes(filters.orderNumber.toLowerCase())
-      );
-    }
-
-    if (filters.stores.length > 0) {
-      filtered = filtered.filter((order) =>
-        filters.stores.includes(order.store)
-      );
-    }
-
-    if (filters.statuses.length > 0) {
-      filtered = filtered.filter((order) =>
-        order.items.some((item) => filters.statuses.includes(item.status))
-      );
-    }
-
-    if (filters.dateFrom) {
-      const fromDate = new Date(filters.dateFrom);
-      filtered = filtered.filter((order) => order.orderDate >= fromDate);
-    }
-
-    if (filters.dateTo) {
-      const toDate = new Date(filters.dateTo);
-      toDate.setHours(23, 59, 59, 999);
-      filtered = filtered.filter((order) => order.orderDate <= toDate);
-    }
-
-    if (filters.deadlineStatus !== "all") {
-      const today = new Date();
-      filtered = filtered.filter((order) => {
-        const deadline = getDeadline(order.orderDate);
-        const daysLeft = differenceInDays(deadline, today);
-
-        switch (filters.deadlineStatus) {
-          case "overdue":
-            return daysLeft < 0;
-          case "today":
-            return daysLeft === 0;
-          case "week":
-            return daysLeft >= 0 && daysLeft <= 7;
-          default:
-            return true;
-        }
-      });
-    }
-
-    setFilteredOrders(filtered);
+    // Update filter state and reset to page 1
+    setCurrentFilters(filters);
+    setPage(1);
   };
 
   const handleExport = (format: "excel" | "pdf") => {
@@ -231,7 +216,7 @@ export default function Page() {
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             )}
-            <OrderTable orders={filteredOrders} />
+            <OrderTable orders={orders} />
           </div>
         </Suspense>
 

@@ -12,10 +12,16 @@ import { useToast } from '@/hooks/use-toast';
 
 interface BoxManagementProps {
   order: Order;
+  onAddBox?: (box: Omit<Box, 'id'>) => Promise<void>;
+  onDeleteBox?: (boxId: string) => Promise<void>;
 }
 
-const BoxManagement = ({ order }: BoxManagementProps) => {
-  const { addBox, deleteBox } = useOrders();
+const BoxManagement = ({ order, onAddBox, onDeleteBox }: BoxManagementProps) => {
+  const { addBox: contextAddBox, deleteBox: contextDeleteBox } = useOrders();
+
+  // Use provided handlers or fall back to context
+  const addBox = onAddBox || ((box: Omit<Box, 'id'>) => contextAddBox(order.id, box));
+  const deleteBox = onDeleteBox || ((boxId: string) => contextDeleteBox(order.id, boxId));
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -23,7 +29,7 @@ const BoxManagement = ({ order }: BoxManagementProps) => {
     width: '',
     height: '',
     weight: '',
-    itemIds: [] as string[],
+    items: [] as string[],
   });
 
   const handleSubmit = () => {
@@ -36,7 +42,7 @@ const BoxManagement = ({ order }: BoxManagementProps) => {
       return;
     }
 
-    if (formData.itemIds.length === 0) {
+    if (formData.items.length === 0) {
       toast({
         title: 'Error',
         description: 'Please select at least one item for the box',
@@ -45,12 +51,12 @@ const BoxManagement = ({ order }: BoxManagementProps) => {
       return;
     }
 
-    addBox(order.id, {
+    addBox({
       length: parseFloat(formData.length),
       width: parseFloat(formData.width),
       height: parseFloat(formData.height),
       weight: parseFloat(formData.weight),
-      itemIds: formData.itemIds,
+      items: formData.items,
     });
 
     toast({
@@ -63,25 +69,33 @@ const BoxManagement = ({ order }: BoxManagementProps) => {
       width: '',
       height: '',
       weight: '',
-      itemIds: [],
+      items: [],
     });
     setOpen(false);
   };
 
-  const handleDelete = (boxId: string) => {
-    deleteBox(order.id, boxId);
-    toast({
-      title: 'Success',
-      description: 'Box deleted successfully',
-    });
+  const handleDelete = async (boxId: string) => {
+    try {
+      await deleteBox(boxId);
+      toast({
+        title: 'Success',
+        description: 'Box deleted successfully',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete box',
+        variant: 'destructive',
+      });
+    }
   };
 
   const toggleItem = (itemId: string) => {
     setFormData(prev => ({
       ...prev,
-      itemIds: prev.itemIds.includes(itemId)
-        ? prev.itemIds.filter(id => id !== itemId)
-        : [...prev.itemIds, itemId],
+      items: prev.items.includes(itemId)
+        ? prev.items.filter(id => id !== itemId)
+        : [...prev.items, itemId],
     }));
   };
 
@@ -153,7 +167,7 @@ const BoxManagement = ({ order }: BoxManagementProps) => {
                       <div key={item.id} className="flex items-center space-x-2">
                         <Checkbox
                           id={`item-${item.id}`}
-                          checked={formData.itemIds.includes(item.id)}
+                          checked={formData.items.includes(item.id)}
                           onCheckedChange={() => toggleItem(item.id)}
                         />
                         <label
@@ -185,7 +199,7 @@ const BoxManagement = ({ order }: BoxManagementProps) => {
         ) : (
           <div className="space-y-4">
             {order.boxes.map((box, index) => {
-              const itemNames = box.itemIds.map(itemId => {
+              const itemNames = box.items.map(itemId => {
                 const itemIndex = order.items.findIndex(item => item.id === itemId);
                 return `Item ${itemIndex + 1}`;
               }).join(', ');

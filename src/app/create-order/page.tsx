@@ -122,9 +122,9 @@ export default function Page() {
       fabricColor: item.fabricColor!,
       closureType: item.closureType!,
       mountingType: item.mountingType!,
-      frameCutComplete: false,
-      meshCutComplete: false,
-      status: 'Pending',
+      frameCuttingStatus: 'Pending',
+      meshCuttingStatus: 'Pending',
+      qualityStatus: 'Pending',
     }));
 
     addOrder({

@@ -1,11 +1,17 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Store, ItemStatus } from '@/types/order';
-import { Card, CardContent } from '@/components/ui/card';
-import { Search, X } from 'lucide-react';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Store } from "@/types/order";
+import { Card, CardContent } from "@/components/ui/card";
+import { Search, X } from "lucide-react";
 
 interface OrderFiltersProps {
   onFilterChange: (filters: FilterState) => void;
@@ -13,8 +19,8 @@ interface OrderFiltersProps {
 
 export interface FilterState {
   orderNumber: string;
-  stores: Store[];
-  statuses: ItemStatus[];
+  stores: string[]; // Changed from Store[] to string[]
+  statuses: string[]; // Overall order statuses
   dateFrom: string;
   dateTo: string;
   deadlineStatus: string;
@@ -22,32 +28,30 @@ export interface FilterState {
 
 const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
   const [filters, setFilters] = useState<FilterState>({
-    orderNumber: '',
+    orderNumber: "",
     stores: [],
     statuses: [],
-    dateFrom: '',
-    dateTo: '',
-    deadlineStatus: 'all',
+    dateFrom: "",
+    dateTo: "",
+    deadlineStatus: "all",
   });
 
-  const stores: Store[] = ['.nl', '.de', '.dk', '.fr', '.uk'];
-  const statuses: ItemStatus[] = [
-    'Pending',
-    'Frame Cut Complete',
-    'Mesh Cut Complete',
-    'Ready for Packaging',
-    'Packed',
-    'Shipped',
+  const stores = [".nl", ".de", ".dk", ".fr", ".uk"];
+  // New overall order statuses
+  const statuses = [
+    "Pending",
+    "In Progress",
+    "Completed",
   ];
 
   const handleReset = () => {
     const resetFilters: FilterState = {
-      orderNumber: '',
+      orderNumber: "",
       stores: [],
       statuses: [],
-      dateFrom: '',
-      dateTo: '',
-      deadlineStatus: 'all',
+      dateFrom: "",
+      dateTo: "",
+      deadlineStatus: "all",
     };
     setFilters(resetFilters);
     onFilterChange(resetFilters);
@@ -59,18 +63,26 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
     onFilterChange(newFilters);
   };
 
-  const toggleStore = (store: Store) => {
-    const newStores = filters.stores.includes(store)
-      ? filters.stores.filter(s => s !== store)
+  const toggleStore = (store: string) => {
+    const isCurrentlySelected = filters.stores.includes(store);
+    const newStores = isCurrentlySelected
+      ? filters.stores.filter((s) => s !== store)
       : [...filters.stores, store];
-    updateFilters({ stores: newStores });
+
+    const newFilters = { ...filters, stores: newStores };
+    setFilters(newFilters);
+    onFilterChange(newFilters);
   };
 
-  const toggleStatus = (status: ItemStatus) => {
-    const newStatuses = filters.statuses.includes(status)
-      ? filters.statuses.filter(s => s !== status)
+  const toggleStatus = (status: string) => {
+    const isCurrentlySelected = filters.statuses.includes(status);
+    const newStatuses = isCurrentlySelected
+      ? filters.statuses.filter((s) => s !== status)
       : [...filters.statuses, status];
-    updateFilters({ statuses: newStatuses });
+
+    const newFilters = { ...filters, statuses: newStatuses };
+    setFilters(newFilters);
+    onFilterChange(newFilters);
   };
 
   return (
@@ -94,16 +106,49 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
           <div className="space-y-2">
             <Label>Stores</Label>
             <div className="flex flex-wrap gap-2">
-              {stores.map(store => (
-                <Button
-                  key={store}
-                  variant={filters.stores.includes(store) ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => toggleStore(store)}
-                >
-                  {store}
-                </Button>
-              ))}
+              {stores.map((store) => {
+                const isSelected = filters.stores.includes(store);
+                return (
+                  <Button
+                    key={store}
+                    type="button"
+                    variant={isSelected ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => toggleStore(store)}
+                    className={
+                      isSelected
+                        ? "bg-primary text-primary-foreground shadow-md"
+                        : ""
+                    }
+                  >
+                    {store}
+                  </Button>
+                );
+              })}
+              <Button
+                type="button"
+                variant={
+                  filters.stores.length === stores.length
+                    ? "default"
+                    : "outline"
+                }
+                size="sm"
+                onClick={() => {
+                  updateFilters({
+                    stores:
+                      filters.stores.length === stores.length
+                        ? []
+                        : [...stores],
+                  });
+                }}
+                className={
+                  filters.stores.length === stores.length
+                    ? "bg-primary text-primary-foreground shadow-md"
+                    : ""
+                }
+              >
+                All
+              </Button>
             </div>
           </div>
 
@@ -130,22 +175,36 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
           <div className="space-y-2 md:col-span-2">
             <Label>Status</Label>
             <div className="flex flex-wrap gap-2">
-              {statuses.map(status => (
-                <Button
-                  key={status}
-                  variant={filters.statuses.includes(status) ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => toggleStatus(status)}
-                >
-                  {status}
-                </Button>
-              ))}
+              {statuses.map((status) => {
+                const isSelected = filters.statuses.includes(status);
+                return (
+                  <Button
+                    key={status}
+                    type="button"
+                    variant={isSelected ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => toggleStatus(status)}
+                    className={
+                      isSelected
+                        ? "bg-primary text-primary-foreground shadow-md"
+                        : ""
+                    }
+                  >
+                    {status}
+                  </Button>
+                );
+              })}
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="deadlineStatus">Deadline</Label>
-            <Select value={filters.deadlineStatus} onValueChange={(value) => updateFilters({ deadlineStatus: value })}>
+            <Select
+              value={filters.deadlineStatus}
+              onValueChange={(value) =>
+                updateFilters({ deadlineStatus: value })
+              }
+            >
               <SelectTrigger id="deadlineStatus">
                 <SelectValue />
               </SelectTrigger>
@@ -159,7 +218,12 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
           </div>
 
           <div className="flex items-end">
-            <Button onClick={handleReset} variant="outline" className="w-full gap-2">
+            <Button
+              type="button"
+              onClick={handleReset}
+              variant="outline"
+              className="w-full gap-2"
+            >
               <X className="h-4 w-4" />
               Reset Filters
             </Button>
