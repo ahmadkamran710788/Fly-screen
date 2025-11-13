@@ -1,32 +1,95 @@
-'use client';
+// ============================================
+// FILE 3: src/components/OrderTable.tsx
+// ============================================
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Order } from '@/types/order';
-import { format, differenceInDays } from 'date-fns';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Eye, ChevronUp, ChevronDown } from 'lucide-react';
+import { useState } from "react";
+import Link from "next/link";
+import { Order } from "@/types/order";
+import { format, differenceInDays } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Eye, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
 
 interface OrderTableProps {
   orders: Order[];
 }
 
-type SortField = 'orderNumber' | 'orderDate' | 'store' | 'itemsCount' | 'deadline';
-type SortDirection = 'asc' | 'desc';
+type SortField = "orderNumber" | "createdAt" | "storeKey" | "status";
+type SortDirection = "asc" | "desc";
 
-const OrderTable = ({ orders }: OrderTableProps) => {
-  const router = useRouter();
-  const [sortField, setSortField] = useState<SortField>('orderNumber');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+interface PaginationData {
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+  limit: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+const OrderTable = ({ orders: initialOrders }: OrderTableProps) => {
+  const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const [loading, setLoading] = useState(false);
+  const [sortField, setSortField] = useState<SortField>("createdAt");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [pagination, setPagination] = useState<PaginationData>({
+    currentPage: 1,
+    totalPages: Math.ceil(initialOrders.length / 10),
+    totalCount: initialOrders.length,
+    limit: 10,
+    hasNextPage: initialOrders.length > 10,
+    hasPrevPage: false,
+  });
+
+  const fetchOrders = async (
+    page: number,
+    sort: SortField,
+    direction: SortDirection
+  ) => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `/api/orders?page=${page}&limit=${pagination.limit}&sortField=${sort}&sortDirection=${direction}`
+      );
+      const data = await response.json();
+
+      if (data.success) {
+        setOrders(data.orders);
+        setPagination(data.pagination);
+        setCurrentPage(data.pagination.currentPage);
+      }
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSort = (field: SortField) => {
+    const newDirection =
+      sortField === field && sortDirection === "asc" ? "desc" : "asc";
+    setSortField(field);
+    setSortDirection(newDirection);
+    fetchOrders(1, field, newDirection);
+  };
+
+  const handlePageChange = (page: number) => {
+    fetchOrders(page, sortField, sortDirection);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const getDeadline = (orderDate: Date) => {
     const deadline = new Date(orderDate);
-    deadline.setDate(deadline.getDate() + 3);
+    deadline.setDate(deadline.getDate());
     return deadline;
   };
 
@@ -37,184 +100,239 @@ const OrderTable = ({ orders }: OrderTableProps) => {
 
     if (daysLeft < 0) {
       return {
-        text: `Overdue by ${Math.abs(daysLeft)} day${Math.abs(daysLeft) !== 1 ? 's' : ''}`,
-        variant: 'destructive' as const,
+        text: `Overdue by ${Math.abs(daysLeft)} day${
+          Math.abs(daysLeft) !== 1 ? "s" : ""
+        }`,
+        variant: "destructive" as const,
       };
     } else if (daysLeft === 0) {
       return {
-        text: 'Due today',
-        variant: 'outline' as const,
+        text: "Due today",
+        variant: "outline" as const,
       };
     } else {
       return {
-        text: `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left`,
-        variant: 'secondary' as const,
+        text: `${daysLeft} day${daysLeft !== 1 ? "s" : ""} left`,
+        variant: "secondary" as const,
       };
     }
   };
 
   const getOverallStatus = (order: Order) => {
-    const allShipped = order.items.every(item => item.status === 'Shipped');
-    const allPacked = order.items.every(item => item.status === 'Packed' || item.status === 'Shipped');
-    const allReady = order.items.every(item => 
-      item.status === 'Ready for Packaging' || item.status === 'Packed' || item.status === 'Shipped'
+    const allShipped = order.items?.every((item) => item.status === "Shipped");
+    const allPacked = order.items?.every(
+      (item) => item.status === "Packed" || item.status === "Shipped"
+    );
+    const allReady = order.items?.every(
+      (item) =>
+        item.status === "Ready for Packaging" ||
+        item.status === "Packed" ||
+        item.status === "Shipped"
     );
 
-    if (allShipped) return { text: 'Shipped', variant: 'default' as const };
-    if (allPacked) return { text: 'Packed', variant: 'default' as const };
-    if (allReady) return { text: 'Ready for Packaging', variant: 'secondary' as const };
-    return { text: 'In Progress', variant: 'outline' as const };
+    if (allShipped) return { text: "Shipped", variant: "default" as const };
+    if (allPacked) return { text: "Packed", variant: "default" as const };
+    if (allReady)
+      return { text: "Ready for Packaging", variant: "secondary" as const };
+    return { text: "In Progress", variant: "outline" as const };
   };
-
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
-
-  const sortedOrders = [...orders].sort((a, b) => {
-    let comparison = 0;
-
-    switch (sortField) {
-      case 'orderNumber':
-        comparison = a.orderNumber.localeCompare(b.orderNumber);
-        break;
-      case 'orderDate':
-        comparison = a.orderDate.getTime() - b.orderDate.getTime();
-        break;
-      case 'store':
-        comparison = a.store.localeCompare(b.store);
-        break;
-      case 'itemsCount':
-        comparison = a.items.length - b.items.length;
-        break;
-      case 'deadline':
-        comparison = getDeadline(a.orderDate).getTime() - getDeadline(b.orderDate).getTime();
-        break;
-    }
-
-    return sortDirection === 'asc' ? comparison : -comparison;
-  });
-
-  const totalPages = Math.ceil(sortedOrders.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedOrders = sortedOrders.slice(startIndex, startIndex + itemsPerPage);
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return null;
-    return sortDirection === 'asc' ? 
-      <ChevronUp className="h-4 w-4 inline ml-1" /> : 
-      <ChevronDown className="h-4 w-4 inline ml-1" />;
+    return sortDirection === "asc" ? (
+      <ChevronUp className="h-4 w-4 inline ml-1" />
+    ) : (
+      <ChevronDown className="h-4 w-4 inline ml-1" />
+    );
   };
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const { totalPages } = pagination;
+
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    pages.push(1);
+
+    if (currentPage > 3) {
+      pages.push("...");
+    }
+
+    for (
+      let i = Math.max(2, currentPage - 1);
+      i <= Math.min(totalPages - 1, currentPage + 1);
+      i++
+    ) {
+      pages.push(i);
+    }
+
+    if (currentPage < totalPages - 2) {
+      pages.push("...");
+    }
+
+    if (totalPages > 1) {
+      pages.push(totalPages);
+    }
+
+    return pages;
+  };
+
+  const startIndex = (currentPage - 1) * pagination.limit;
+  const endIndex = Math.min(
+    startIndex + pagination.limit,
+    pagination.totalCount
+  );
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="rounded-lg border border-border bg-card overflow-hidden relative">
+        {loading && (
+          <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-10">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        )}
+
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead 
-                className="cursor-pointer hover:bg-muted/50"
-                onClick={() => handleSort('orderNumber')}
+              <TableHead
+                className="cursor-pointer hover:bg-muted/50 select-none"
+                onClick={() => handleSort("orderNumber")}
               >
                 Order Number <SortIcon field="orderNumber" />
               </TableHead>
-              <TableHead 
-                className="cursor-pointer hover:bg-muted/50"
-                onClick={() => handleSort('orderDate')}
+              <TableHead
+                className="cursor-pointer hover:bg-muted/50 select-none"
+                onClick={() => handleSort("createdAt")}
               >
-                Order Date <SortIcon field="orderDate" />
+                Order Date <SortIcon field="createdAt" />
               </TableHead>
-              <TableHead 
-                className="cursor-pointer hover:bg-muted/50"
-                onClick={() => handleSort('store')}
+              <TableHead
+                className="cursor-pointer hover:bg-muted/50 select-none"
+                onClick={() => handleSort("storeKey")}
               >
-                Store <SortIcon field="store" />
+                Store <SortIcon field="storeKey" />
               </TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead 
-                className="cursor-pointer hover:bg-muted/50"
-                onClick={() => handleSort('itemsCount')}
+              <TableHead
+                className="cursor-pointer hover:bg-muted/50 select-none"
+                onClick={() => handleSort("status")}
               >
-                Items <SortIcon field="itemsCount" />
+                Status <SortIcon field="status" />
               </TableHead>
-              <TableHead 
-                className="cursor-pointer hover:bg-muted/50"
-                onClick={() => handleSort('deadline')}
-              >
-                Deadline <SortIcon field="deadline" />
-              </TableHead>
+              <TableHead>Items</TableHead>
+              <TableHead>Deadline</TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedOrders.map((order) => {
-              const status = getOverallStatus(order);
-              const deadline = getDeadlineStatus(order.orderDate);
+            {orders.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={7}
+                  className="text-center py-8 text-muted-foreground"
+                >
+                  No orders found
+                </TableCell>
+              </TableRow>
+            ) : (
+              orders.map((order) => {
+                const status = getOverallStatus(order);
+                const orderDate = new Date(order.orderDate || order.createdAt);
+                const deadline = getDeadlineStatus(orderDate);
 
-              return (
-                <TableRow key={order.id} className="hover:bg-muted/30">
-                  <TableCell className="font-medium">{order.orderNumber}</TableCell>
-                  <TableCell>{format(order.orderDate, 'dd/MM/yyyy')}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{order.store}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={status.variant}>{status.text}</Badge>
-                  </TableCell>
-                  <TableCell>{order.items.length} item{order.items.length !== 1 ? 's' : ''}</TableCell>
-                  <TableCell>
-                    <Badge variant={deadline.variant}>{deadline.text}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button size="sm" variant="outline" className="gap-2" asChild>
-                      <Link href={`/orders/${order.id}`}>
-                        <Eye className="h-4 w-4" />
-                        View
-                      </Link>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+                return (
+                  <TableRow key={order.id} className="hover:bg-muted/30">
+                    <TableCell className="font-medium">
+                      {order.orderNumber}
+                    </TableCell>
+                    <TableCell>{format(orderDate, "dd/MM/yyyy")}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {order.store || order.storeKey}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={status.variant}>{status.text}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {order.items?.length || order.lineItems?.length || 0} item
+                      {(order.items?.length || order.lineItems?.length || 0) !==
+                      1
+                        ? "s"
+                        : ""}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={deadline.variant}>{deadline.text}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2"
+                        asChild
+                      >
+                        <Link href={`/orders/${order.id}`}>
+                          <Eye className="h-4 w-4" />
+                          View
+                        </Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
           </TableBody>
         </Table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
+      {pagination.totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, sortedOrders.length)} of {sortedOrders.length} orders
+            Showing {startIndex + 1} to {endIndex} of {pagination.totalCount}{" "}
+            orders
           </p>
+
           <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={!pagination.hasPrevPage || loading}
             >
               Previous
             </Button>
-            <div className="flex items-center gap-2">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <Button
-                  key={page}
-                  variant={currentPage === page ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setCurrentPage(page)}
-                >
-                  {page}
-                </Button>
-              ))}
+
+            <div className="flex items-center gap-1">
+              {getPageNumbers().map((page, idx) =>
+                page === "..." ? (
+                  <span
+                    key={`ellipsis-${idx}`}
+                    className="px-2 text-muted-foreground"
+                  >
+                    ...
+                  </span>
+                ) : (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handlePageChange(page as number)}
+                    disabled={loading}
+                    className="min-w-[2.5rem]"
+                  >
+                    {page}
+                  </Button>
+                )
+              )}
             </div>
+
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={!pagination.hasNextPage || loading}
             >
               Next
             </Button>

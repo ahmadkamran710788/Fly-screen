@@ -46,6 +46,11 @@ const OrderSchema = new Schema(
   { timestamps: true }
 );
 
+// / Compound indexes for common query patterns
+OrderSchema.index({ createdAt: -1 }); // For sorting by date (descending)
+OrderSchema.index({ status: 1, createdAt: -1 }); // For filtering by status + sorting
+OrderSchema.index({ storeKey: 1, createdAt: -1 }); // For filtering by store + sorting
+
 export type Order = InferSchemaType<typeof OrderSchema>;
 
 export const OrderModel: Model<Order> =

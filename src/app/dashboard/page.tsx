@@ -1,7 +1,6 @@
-// src/app/dashboard/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardHeader from "@/components/DashboardHeader";
 import OrderFilters, { FilterState } from "@/components/OrderFilters";
@@ -9,26 +8,48 @@ import OrderTable from "@/components/OrderTable";
 import { Button } from "@/components/ui/button";
 import { Order } from "@/types/order";
 import { differenceInDays } from "date-fns";
-import { FileSpreadsheet, FileText } from "lucide-react";
+import { FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+async function getOrders(page: number = 1, limit: number = 10) {
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+  const response = await fetch(
+    `${baseUrl}/api/orders?page=${page}&limit=${limit}&sortField=createdAt&sortDirection=desc`,
+    { cache: "no-store" }
+  );
+
+  if (!response.ok) throw new Error("Failed to fetch orders");
+  return response.json();
+}
 
 export default function Page() {
   const { role } = useAuth();
   const { toast } = useToast();
+
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // NO redirect logic - middleware handles it
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPrevPage, setHasPrevPage] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
 
+  // Fetch Orders
   useEffect(() => {
-    // Load orders from API (Mongo) and adapt to UI Order shape
-    const load = async () => {
+    const loadOrders = async () => {
       try {
-        const res = await fetch("/api/orders", { cache: "no-store" });
-        const data = await res.json();
-
-        // Handle API response structure { success: true, orders: [...] }
+        setLoading(true);
+        const data = await getOrders(page, limit);
         const docs = data.orders || [];
+
+        setTotalPages(data.pagination.totalPages);
+        setHasNextPage(data.pagination.hasNextPage);
+        setHasPrevPage(data.pagination.hasPrevPage);
+        setTotalCount(data.pagination.totalCount);
 
         const mapped: Order[] = docs.map((o: any) => ({
           id:
@@ -59,14 +80,18 @@ export default function Page() {
           })),
           boxes: [],
         }));
+
         setAllOrders(mapped);
         setFilteredOrders(mapped);
-      } catch (e) {
-        console.error("Failed to load orders:", e);
+      } catch (error) {
+        console.error("Failed to load orders:", error);
+      } finally {
+        setLoading(false);
       }
     };
-    load();
-  }, []);
+
+    loadOrders();
+  }, [page, limit]);
 
   const getDeadline = (orderDate: Date) => {
     const deadline = new Date(orderDate);
@@ -137,6 +162,25 @@ export default function Page() {
     });
   };
 
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+    }
+  };
+
+  const handleLimitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setLimit(Number(e.target.value));
+    setPage(1); // reset to first page when changing limit
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <DashboardHeader />
@@ -174,7 +218,62 @@ export default function Page() {
 
         <OrderFilters onFilterChange={handleFilterChange} />
 
-        <OrderTable orders={filteredOrders} />
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          }
+        >
+          <div className="relative">
+            {loading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            )}
+            <OrderTable orders={filteredOrders} />
+          </div>
+        </Suspense>
+
+        {/* Pagination Controls */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              Rows per page:
+            </span>
+            <select
+              value={limit}
+              onChange={handleLimitChange}
+              className="border rounded-md px-2 py-1 text-sm bg-background"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              disabled={!hasPrevPage || loading}
+              onClick={() => handlePageChange(page - 1)}
+            >
+              Previous
+            </Button>
+
+            <span className="text-sm text-muted-foreground">
+              Page {page} of {totalPages} ({totalCount} orders)
+            </span>
+
+            <Button
+              variant="outline"
+              disabled={!hasNextPage || loading}
+              onClick={() => handlePageChange(page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
       </main>
     </div>
   );
