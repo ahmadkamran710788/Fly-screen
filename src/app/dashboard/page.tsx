@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardHeader from "@/components/DashboardHeader";
 import OrderFilters, { FilterState } from "@/components/OrderFilters";
@@ -79,7 +79,7 @@ export default function Page() {
     deadlineStatus: "all",
   });
 
-  // Fetch Orders
+  // Fetch Orders - triggers on page, limit, or filter changes
   useEffect(() => {
     const loadOrders = async () => {
       try {
@@ -126,13 +126,18 @@ export default function Page() {
         setOrders(mapped);
       } catch (error) {
         console.error("Failed to load orders:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load orders. Please try again.",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
     };
 
     loadOrders();
-  }, [page, limit, currentFilters]);
+  }, [page, limit, currentFilters, toast]);
 
   const handleFilterChange = (filters: FilterState) => {
     // Update filter state and reset to page 1
@@ -157,14 +162,6 @@ export default function Page() {
     setLimit(Number(e.target.value));
     setPage(1); // reset to first page when changing limit
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -203,22 +200,14 @@ export default function Page() {
 
         <OrderFilters onFilterChange={handleFilterChange} />
 
-        <Suspense
-          fallback={
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin" />
+        <div className="relative">
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10 rounded-lg">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          }
-        >
-          <div className="relative">
-            {loading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            )}
-            <OrderTable orders={orders} />
-          </div>
-        </Suspense>
+          )}
+          <OrderTable orders={orders} />
+        </div>
 
         {/* Pagination Controls */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">

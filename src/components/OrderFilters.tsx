@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +36,9 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
     deadlineStatus: "all",
   });
 
+  // Debounce timeout ref for text input
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+
   const stores = [".nl", ".de", ".dk", ".fr", ".uk"];
   // New overall order statuses
   const statuses = [
@@ -43,6 +46,15 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
     "In Progress",
     "Completed",
   ];
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+  }, []);
 
   const handleReset = () => {
     const resetFilters: FilterState = {
@@ -57,6 +69,23 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
     onFilterChange(resetFilters);
   };
 
+  // Debounced update for text input
+  const updateFiltersDebounced = (updates: Partial<FilterState>) => {
+    const newFilters = { ...filters, ...updates };
+    setFilters(newFilters);
+
+    // Clear existing timeout
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+
+    // Set new timeout - only trigger API call after 500ms of no typing
+    debounceTimeout.current = setTimeout(() => {
+      onFilterChange(newFilters);
+    }, 500);
+  };
+
+  // Immediate update for non-text inputs (buttons, selects, dates)
   const updateFilters = (updates: Partial<FilterState>) => {
     const newFilters = { ...filters, ...updates };
     setFilters(newFilters);
@@ -97,7 +126,7 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
                 id="orderNumber"
                 placeholder="Search..."
                 value={filters.orderNumber}
-                onChange={(e) => updateFilters({ orderNumber: e.target.value })}
+                onChange={(e) => updateFiltersDebounced({ orderNumber: e.target.value })}
                 className="pl-9"
               />
             </div>
