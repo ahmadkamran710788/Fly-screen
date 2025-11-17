@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
       name: "auth-token",
       value: token,
       httpOnly: true,
-      secure: isProduction,
+      secure: false,
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: "/",
