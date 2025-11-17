@@ -146,7 +146,7 @@ export async function GET(req: NextRequest) {
     const [orders, totalCount] = await Promise.all([
       OrderModel.find(filterQuery)
         .select(
-          "orderNumber shopifyId status storeKey lineItems total createdAt processedAt name"
+          "orderNumber shopifyId status storeKey lineItems total createdAt processedAt name raw boxes"
         )
         .sort(sortOptions)
         .skip(skip)

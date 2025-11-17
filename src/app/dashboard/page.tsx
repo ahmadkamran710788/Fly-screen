@@ -10,6 +10,19 @@ import { Order } from "@/types/order";
 import { differenceInDays } from "date-fns";
 import { FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  exportAdminToExcel,
+  exportFrameToExcel,
+  exportMeshToExcel,
+  exportQualityToExcel,
+} from "@/lib/exportToExcel";
+import {
+  exportAdminToPDF,
+  exportFrameToPDF,
+  exportMeshToPDF,
+  exportQualityToPDF,
+} from "@/lib/exportToPDF";
+import { mapOrders } from "@/lib/orderMapper";
 
 async function getOrders(
   page: number = 1,
@@ -145,11 +158,80 @@ export default function Page() {
     setPage(1);
   };
 
-  const handleExport = (format: "excel" | "pdf") => {
-    toast({
-      title: "Coming Soon",
-      description: `Export functionality for ${format.toUpperCase()} format will be available soon.`,
-    });
+  const handleExport = async (format: "excel" | "pdf") => {
+    try {
+      // Show loading toast
+      toast({
+        title: "Exporting...",
+        description: "Fetching all orders from all stores. Please wait...",
+      });
+
+      // Fetch ALL orders from ALL stores (no pagination, no filters)
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+      const params = new URLSearchParams({
+        limit: "9999", // Get all orders
+        sortField: "createdAt",
+        sortDirection: "desc",
+      });
+
+      const response = await fetch(`${baseUrl}/api/orders?${params.toString()}`, {
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch orders for export");
+      }
+
+      const data = await response.json();
+      const allOrders = data.orders || [];
+
+      if (allOrders.length === 0) {
+        toast({
+          title: "No Data",
+          description: "There are no orders to export.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Map orders using the same logic as order detail page
+      const mappedOrders = mapOrders(allOrders);
+
+      // Export based on format and role
+      if (format === "excel") {
+        if (role === "Admin") {
+          exportAdminToExcel(mappedOrders);
+        } else if (role === "Frame Cutting") {
+          exportFrameToExcel(mappedOrders);
+        } else if (role === "Mesh Cutting") {
+          exportMeshToExcel(mappedOrders);
+        } else if (role === "Quality") {
+          exportQualityToExcel(mappedOrders);
+        }
+      } else if (format === "pdf") {
+        if (role === "Admin") {
+          exportAdminToPDF(mappedOrders);
+        } else if (role === "Frame Cutting") {
+          exportFrameToPDF(mappedOrders);
+        } else if (role === "Mesh Cutting") {
+          exportMeshToPDF(mappedOrders);
+        } else if (role === "Quality") {
+          exportQualityToPDF(mappedOrders);
+        }
+      }
+
+      toast({
+        title: "Export Successful",
+        description: `Exported ${mappedOrders.length} orders to ${format.toUpperCase()} successfully.`,
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export orders. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handlePageChange = (newPage: number) => {

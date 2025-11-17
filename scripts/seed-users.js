@@ -42,7 +42,7 @@ async function seedUsers() {
         password: "admin123",
         role: "Admin",
         name: "Admin User",
-        isActive: true,
+        zisActive: true,
       },
       {
         email: "frame@company.com",

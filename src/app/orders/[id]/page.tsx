@@ -129,16 +129,27 @@ export default function Page() {
             return {
               id: String(li.id || li._id || `${o.shopifyId}-${idx + 1}`),
               width: parseFloat(
-                getProp(props, "Breedte in cm") || getProp(props, "En") || "0"
+                getProp(props, "Breedte in cm") ||
+                  getProp(props, "En") ||
+                  getProp(props, "Breite in cm") ||
+                  getProp(props, "Bredde i cm") ||
+                  getProp(props, "Largeur en cm") ||
+                  "0"
               ),
               height: parseFloat(
-                getProp(props, "Hoogte in cm") || getProp(props, "Boy") || "0"
+                getProp(props, "Hoogte in cm") ||
+                  getProp(props, "Boy") ||
+                  getProp(props, "Höhe in cm") ||
+                  getProp(props, "Højde i cm") ||
+                  getProp(props, "Hauteur en cm") ||
+                  "0"
               ),
               profileColor:
                 getProp(props, "Profielkleur:") ||
                 getProp(props, "Profil renk") ||
-                getProp(props, "Profielkleur") ||
-                "",
+                getProp(props, "Profilfarbe") ||
+                getProp(props, "Ramme farve") ||
+                "-",
               orientation:
                 getProp(props, "Schuifrichting") || getProp(props, "Yon") || "",
               installationType:
