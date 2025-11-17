@@ -19,6 +19,7 @@ const DashboardHeader = () => {
   const router = useRouter();
   const { toast } = useToast();
   const [store, setStore] = useState<"nl" | "de" | "uk" | "fr" | "dk">("nl");
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -30,20 +31,50 @@ const DashboardHeader = () => {
   };
 
   const handleSync = async () => {
+    setIsSyncing(true);
+
+    // Show loading toast that persists until sync completes
+    const { id, update, dismiss } = toast({
+      title: "Syncing...",
+      description: `Fetching store orders  from .${store}`,
+      variant: "default",
+      className:
+        "bg-white dark:bg-gray-800 text-black dark:text-white border-gray-300",
+      duration: Infinity, // Prevent auto-dismiss
+    });
+
     try {
       const res = await fetch(`/api/sync?store=${store}`, { method: "POST" });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || "Sync failed");
-      toast({
-        title: "Sync completed",
-        description: `Store: ${data.store} | Products: ${data.counts.products} | Orders: ${data.counts.orders}`,
+
+      // Update toast to success (green)
+      update({
+        id,
+        title: "✓ Sync completed",
+        description: `Store: .${data.store} | Products: ${data.counts.products} | Orders: ${data.counts.orders}`,
+        variant: "default",
+        className: "bg-green-600 text-white border-green-700",
+        duration: 4000, // Auto dismiss success after 4 seconds
       });
+
+      // Auto dismiss after 4 seconds
+      setTimeout(() => dismiss(), 4000);
     } catch (e: any) {
-      toast({
-        title: "Sync failed",
+      // Update toast to error (red)
+      update({
+        id,
+        title: "✗ Sync failed",
         description: e.message,
         variant: "destructive",
+        className: "bg-red-600 text-white border-red-700",
+        duration: 4000, // Auto dismiss error after 4 seconds
       });
+
+      // Auto dismiss after 4 seconds
+      setTimeout(() => dismiss(), 4000);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -89,8 +120,9 @@ const DashboardHeader = () => {
                 variant="outline"
                 className="hover:cursor-pointer"
                 onClick={handleSync}
+                disabled={isSyncing}
               >
-                Sync Store
+                {isSyncing ? "Syncing..." : "Sync Store"}
               </Button>
             </div>
 
