@@ -250,7 +250,7 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
               type="button"
               onClick={handleReset}
               variant="outline"
-              className="w-full gap-2"
+              className="w-full gap-2 hover:cursor-pointer"
             >
               <X className="h-4 w-4" />
               Reset Filters
