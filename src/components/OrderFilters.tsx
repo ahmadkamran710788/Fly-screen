@@ -116,10 +116,10 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
           <div className="space-y-2">
             <Label htmlFor="orderNumber">Order Number</Label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              {/* <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /> */}
               <Input
                 id="orderNumber"
-                placeholder="Search..."
+                placeholder="Search Order No#"
                 value={filters.orderNumber}
                 onChange={(e) =>
                   updateFiltersDebounced({ orderNumber: e.target.value })
