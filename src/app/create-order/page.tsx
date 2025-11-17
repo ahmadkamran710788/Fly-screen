@@ -78,6 +78,16 @@ export default function Page() {
   const [errors, setErrors] = useState<Record<number, Record<string, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Calculate delivery date (order date + 3 days)
+  const calculateDeliveryDate = (orderDateStr: string): string => {
+    if (!orderDateStr) return '';
+    const date = new Date(orderDateStr);
+    date.setDate(date.getDate() + 3);
+    return date.toISOString().split('T')[0];
+  };
+
+  const deliveryDate = calculateDeliveryDate(orderDate);
+
   useEffect(() => {
     if (role !== 'Admin') {
       router.push('/dashboard');
@@ -254,7 +264,7 @@ export default function Page() {
             <CardTitle>Create New Order</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="store">Store</Label>
                 <Select value={store} onValueChange={(value) => setStore(value as Store)}>
@@ -278,6 +288,17 @@ export default function Page() {
                   type="date"
                   value={orderDate}
                   onChange={(e) => setOrderDate(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="deliveryDate">Delivery Date</Label>
+                <Input
+                  id="deliveryDate"
+                  type="date"
+                  value={deliveryDate}
+                  disabled
+                  className="bg-muted cursor-not-allowed"
                 />
               </div>
 
