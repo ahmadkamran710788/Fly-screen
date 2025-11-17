@@ -31,21 +31,77 @@ const BoxManagement = ({ order, onAddBox, onDeleteBox }: BoxManagementProps) => 
     weight: '',
     items: [] as string[],
   });
+  const [errors, setErrors] = useState({
+    length: '',
+    width: '',
+    height: '',
+    weight: '',
+    items: '',
+  });
 
-  const handleSubmit = () => {
-    if (!formData.length || !formData.width || !formData.height || !formData.weight) {
-      toast({
-        title: 'Error',
-        description: 'Please fill in all box dimensions',
-        variant: 'destructive',
-      });
-      return;
+  const validateField = (field: 'length' | 'width' | 'height' | 'weight', value: string): string => {
+    // Check if empty
+    if (!value || value.trim() === '') {
+      return 'This field is required';
     }
 
-    if (formData.items.length === 0) {
+    const numValue = parseFloat(value);
+
+    // Check if valid number
+    if (isNaN(numValue)) {
+      return 'Please enter a valid number';
+    }
+
+    // Check if positive
+    if (numValue <= 0) {
+      return 'Value must be greater than 0';
+    }
+
+    // Field-specific validations
+    if (field === 'length' || field === 'width' || field === 'height') {
+      // Maximum dimension: 1000cm (10 meters)
+      if (numValue > 1000) {
+        return 'Maximum value is 1000cm';
+      }
+      // Minimum dimension: 1cm
+      if (numValue < 1) {
+        return 'Minimum value is 1cm';
+      }
+    }
+
+    if (field === 'weight') {
+      // Maximum weight: 10000kg
+      if (numValue > 10000) {
+        return 'Maximum weight is 10000kg';
+      }
+      // Minimum weight: 0.1kg
+      if (numValue < 0.1) {
+        return 'Minimum weight is 0.1kg';
+      }
+    }
+
+    return '';
+  };
+
+  const handleSubmit = () => {
+    // Validate all fields
+    const newErrors = {
+      length: validateField('length', formData.length),
+      width: validateField('width', formData.width),
+      height: validateField('height', formData.height),
+      weight: validateField('weight', formData.weight),
+      items: formData.items.length === 0 ? 'Please select at least one item for the box' : '',
+    };
+
+    setErrors(newErrors);
+
+    // Check if any errors exist
+    const hasErrors = Object.values(newErrors).some(error => error !== '');
+
+    if (hasErrors) {
       toast({
-        title: 'Error',
-        description: 'Please select at least one item for the box',
+        title: 'Validation Error',
+        description: 'Please fix the errors in the form',
         variant: 'destructive',
       });
       return;
@@ -71,6 +127,13 @@ const BoxManagement = ({ order, onAddBox, onDeleteBox }: BoxManagementProps) => 
       weight: '',
       items: [],
     });
+    setErrors({
+      length: '',
+      width: '',
+      height: '',
+      weight: '',
+      items: '',
+    });
     setOpen(false);
   };
 
@@ -90,6 +153,20 @@ const BoxManagement = ({ order, onAddBox, onDeleteBox }: BoxManagementProps) => 
     }
   };
 
+  const handleFieldChange = (field: 'length' | 'width' | 'height' | 'weight', value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const handleFieldBlur = (field: 'length' | 'width' | 'height' | 'weight') => {
+    // Validate on blur (when user leaves the field)
+    const error = validateField(field, formData[field]);
+    setErrors(prev => ({ ...prev, [field]: error }));
+  };
+
   const toggleItem = (itemId: string) => {
     setFormData(prev => ({
       ...prev,
@@ -97,6 +174,10 @@ const BoxManagement = ({ order, onAddBox, onDeleteBox }: BoxManagementProps) => 
         ? prev.items.filter(id => id !== itemId)
         : [...prev.items, itemId],
     }));
+    // Clear items error when user selects an item
+    if (errors.items) {
+      setErrors(prev => ({ ...prev, items: '' }));
+    }
   };
 
   return (
@@ -122,47 +203,70 @@ const BoxManagement = ({ order, onAddBox, onDeleteBox }: BoxManagementProps) => 
                     <Input
                       id="length"
                       type="number"
+                      min="1"
+                      max="1000"
+                      step="1"
                       value={formData.length}
-                      onChange={(e) => setFormData(prev => ({ ...prev, length: e.target.value }))}
+                      onChange={(e) => handleFieldChange('length', e.target.value)}
+                      onBlur={() => handleFieldBlur('length')}
                       placeholder="120"
+                      className={errors.length ? 'border-red-500 focus-visible:ring-red-500' : ''}
                     />
+                    {errors.length && <p className="text-xs text-red-500 mt-1">{errors.length}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="width">Width (cm)</Label>
                     <Input
                       id="width"
                       type="number"
+                      min="1"
+                      max="1000"
+                      step="1"
                       value={formData.width}
-                      onChange={(e) => setFormData(prev => ({ ...prev, width: e.target.value }))}
+                      onChange={(e) => handleFieldChange('width', e.target.value)}
+                      onBlur={() => handleFieldBlur('width')}
                       placeholder="80"
+                      className={errors.width ? 'border-red-500 focus-visible:ring-red-500' : ''}
                     />
+                    {errors.width && <p className="text-xs text-red-500 mt-1">{errors.width}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="height">Height (cm)</Label>
                     <Input
                       id="height"
                       type="number"
+                      min="1"
+                      max="1000"
+                      step="1"
                       value={formData.height}
-                      onChange={(e) => setFormData(prev => ({ ...prev, height: e.target.value }))}
+                      onChange={(e) => handleFieldChange('height', e.target.value)}
+                      onBlur={() => handleFieldBlur('height')}
                       placeholder="10"
+                      className={errors.height ? 'border-red-500 focus-visible:ring-red-500' : ''}
                     />
+                    {errors.height && <p className="text-xs text-red-500 mt-1">{errors.height}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="weight">Weight (kg)</Label>
                     <Input
                       id="weight"
                       type="number"
+                      min="0.1"
+                      max="10000"
                       step="0.1"
                       value={formData.weight}
-                      onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))}
+                      onChange={(e) => handleFieldChange('weight', e.target.value)}
+                      onBlur={() => handleFieldBlur('weight')}
                       placeholder="5"
+                      className={errors.weight ? 'border-red-500 focus-visible:ring-red-500' : ''}
                     />
+                    {errors.weight && <p className="text-xs text-red-500 mt-1">{errors.weight}</p>}
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Items in this box</Label>
-                  <div className="space-y-2">
+                  <Label className={errors.items ? 'text-red-500' : ''}>Items in this box</Label>
+                  <div className={`space-y-2 ${errors.items ? 'border border-red-500 rounded-md p-3' : ''}`}>
                     {order.items.map((item, index) => (
                       <div key={item.id} className="flex items-center space-x-2">
                         <Checkbox
@@ -179,6 +283,7 @@ const BoxManagement = ({ order, onAddBox, onDeleteBox }: BoxManagementProps) => 
                       </div>
                     ))}
                   </div>
+                  {errors.items && <p className="text-xs text-red-500 mt-1">{errors.items}</p>}
                 </div>
 
                 <Button onClick={handleSubmit} className="w-full">
