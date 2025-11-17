@@ -2,9 +2,11 @@
 import { SignJWT, jwtVerify, decodeJwt } from "jose";
 import { Role } from "@/types/order";
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "my_super_strong_secret_key_123"
-);
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is not set');
+}
+
+const SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
 export interface JWTPayload {
   userId: string;
