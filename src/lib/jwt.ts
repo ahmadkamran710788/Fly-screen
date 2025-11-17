@@ -1,5 +1,5 @@
 // src/lib/jwt.ts
-import { SignJWT, jwtVerify, decodeJwt } from "jose";
+import { SignJWT, jwtVerify } from "jose";
 import { Role } from "@/types/order";
 
 if (!process.env.JWT_SECRET) {
@@ -37,25 +37,5 @@ export async function verifyToken(token: string): Promise<JWTPayload> {
   } catch (err) {
     console.error("JWT verification error:", err);
     throw new Error("Invalid or expired token");
-  }
-}
-export function decodeToken(token: string): JWTPayload | null {
-  try {
-    const decoded = decodeJwt(token);
-    // runtime guard to ensure required fields exist, then cast via unknown to avoid incompatible type error
-    if (
-      typeof decoded === "object" &&
-      decoded !== null &&
-      "userId" in decoded &&
-      "email" in decoded &&
-      "role" in decoded &&
-      "name" in decoded
-    ) {
-      return decoded as unknown as JWTPayload;
-    }
-    return null;
-  } catch (err) {
-    console.error("JWT decode error:", err);
-    return null;
   }
 }
