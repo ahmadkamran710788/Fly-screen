@@ -184,9 +184,10 @@ export default function Page() {
     setIsSubmitting(true);
 
     try {
-      // Generate order number in format UK278-XXXX (4-digit incrementing number)
+      // Generate order number based on store: UK278-XXXX, NL278-XXXX, DE278-XXXX, etc.
+      const storePrefix = store.replace('.', '').toUpperCase(); // .nl -> NL, .uk -> UK
       const timestamp = Date.now().toString().slice(-4);
-      const orderNumber = `UK278-${timestamp}`;
+      const orderNumber = `${storePrefix}278-${timestamp}`;
       const completeItems: OrderItem[] = items.map((item, i) => ({
         id: `${orderNumber}-${i + 1}`,
         width: item.width!,
