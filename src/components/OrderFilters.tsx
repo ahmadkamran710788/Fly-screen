@@ -9,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Store } from "@/types/order";
 import { Card, CardContent } from "@/components/ui/card";
 import { Search, X } from "lucide-react";
 
@@ -21,8 +20,7 @@ export interface FilterState {
   orderNumber: string;
   stores: string[]; // Changed from Store[] to string[]
   statuses: string[]; // Overall order statuses
-  dateFrom: string;
-  dateTo: string;
+  orderDate: string;
   deadlineStatus: string;
 }
 
@@ -31,8 +29,7 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
     orderNumber: "",
     stores: [],
     statuses: [],
-    dateFrom: "",
-    dateTo: "",
+    orderDate: "",
     deadlineStatus: "all",
   });
 
@@ -41,11 +38,7 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
 
   const stores = [".nl", ".de", ".dk", ".fr", ".uk"];
   // New overall order statuses
-  const statuses = [
-    "Pending",
-    "In Progress",
-    "Completed",
-  ];
+  const statuses = ["Pending", "In Progress", "Completed"];
 
   // Clean up timeout on unmount
   useEffect(() => {
@@ -61,8 +54,7 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
       orderNumber: "",
       stores: [],
       statuses: [],
-      dateFrom: "",
-      dateTo: "",
+      orderDate: "",
       deadlineStatus: "all",
     };
     setFilters(resetFilters);
@@ -126,7 +118,9 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
                 id="orderNumber"
                 placeholder="Search..."
                 value={filters.orderNumber}
-                onChange={(e) => updateFiltersDebounced({ orderNumber: e.target.value })}
+                onChange={(e) =>
+                  updateFiltersDebounced({ orderNumber: e.target.value })
+                }
                 className="pl-9"
               />
             </div>
@@ -146,8 +140,8 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
                     onClick={() => toggleStore(store)}
                     className={
                       isSelected
-                        ? "bg-primary text-primary-foreground shadow-md"
-                        : ""
+                        ? "bg-primary hover:cursor-pointer text-primary-foreground shadow-md"
+                        : " hover:cursor-pointer"
                     }
                   >
                     {store}
@@ -172,8 +166,8 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
                 }}
                 className={
                   filters.stores.length === stores.length
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : ""
+                    ? "bg-primary hover:cursor-pointer text-primary-foreground shadow-md"
+                    : "hover:cursor-pointer"
                 }
               >
                 All
@@ -182,22 +176,13 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="dateFrom">Date From</Label>
+            <Label htmlFor="orderDate">Order Date</Label>
             <Input
-              id="dateFrom"
+              id="orderDate"
               type="date"
-              value={filters.dateFrom}
-              onChange={(e) => updateFilters({ dateFrom: e.target.value })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="dateTo">Date To</Label>
-            <Input
-              id="dateTo"
-              type="date"
-              value={filters.dateTo}
-              onChange={(e) => updateFilters({ dateTo: e.target.value })}
+              className="hover:cursor-pointer"
+              value={filters.orderDate}
+              onChange={(e) => updateFilters({ orderDate: e.target.value })}
             />
           </div>
 
@@ -215,8 +200,8 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
                     onClick={() => toggleStatus(status)}
                     className={
                       isSelected
-                        ? "bg-primary text-primary-foreground shadow-md"
-                        : ""
+                        ? "bg-primary hover:cursor-pointer text-primary-foreground shadow-md"
+                        : "hover:cursor-pointer"
                     }
                   >
                     {status}

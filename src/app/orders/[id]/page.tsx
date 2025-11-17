@@ -134,6 +134,7 @@ export default function Page() {
                   getProp(props, "Breite in cm") ||
                   getProp(props, "Bredde i cm") ||
                   getProp(props, "Largeur en cm") ||
+                  getProp(props, "Width in cm") ||
                   "0"
               ),
               height: parseFloat(
@@ -142,6 +143,7 @@ export default function Page() {
                   getProp(props, "Höhe in cm") ||
                   getProp(props, "Højde i cm") ||
                   getProp(props, "Hauteur en cm") ||
+                  getProp(props, "Height in cm") ||
                   "0"
               ),
               profileColor:
@@ -153,11 +155,17 @@ export default function Page() {
               orientation:
                 getProp(props, "Schuifrichting") || getProp(props, "Yon") || "",
               installationType:
-                getProp(props, "Plaatsing") || getProp(props, "Kurulum") || "",
+                getProp(props, "Plaatsing") ||
+                getProp(props, "Kurulum") ||
+                getProp(props, "Installation method") ||
+                "",
               thresholdType:
                 getProp(props, "Dorpeltype") || getProp(props, "Esik") || "",
               meshType:
-                getProp(props, "Soort gaas") || getProp(props, "Tul") || "",
+                getProp(props, "Soort gaas") ||
+                getProp(props, "Tul") ||
+                getProp(props, "Type of mesh") ||
+                "",
               curtainType:
                 getProp(props, "Type plissé gordijn") ||
                 getProp(props, "Kanat") ||

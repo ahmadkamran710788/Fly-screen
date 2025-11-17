@@ -49,11 +49,8 @@ async function getOrders(
   if (filters?.statuses && filters.statuses.length > 0) {
     params.append("statuses", filters.statuses.join(","));
   }
-  if (filters?.dateFrom) {
-    params.append("dateFrom", filters.dateFrom);
-  }
-  if (filters?.dateTo) {
-    params.append("dateTo", filters.dateTo);
+  if (filters?.orderDate) {
+    params.append("orderDate", filters.orderDate);
   }
   if (filters?.deadlineStatus && filters.deadlineStatus !== "all") {
     params.append("deadlineStatus", filters.deadlineStatus);
@@ -87,8 +84,7 @@ export default function Page() {
     orderNumber: "",
     stores: [],
     statuses: [],
-    dateFrom: "",
-    dateTo: "",
+    orderDate: "",
     deadlineStatus: "all",
   });
 
@@ -167,16 +163,20 @@ export default function Page() {
       });
 
       // Fetch ALL orders from ALL stores (no pagination, no filters)
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+      const baseUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
       const params = new URLSearchParams({
         limit: "9999", // Get all orders
         sortField: "createdAt",
         sortDirection: "desc",
       });
 
-      const response = await fetch(`${baseUrl}/api/orders?${params.toString()}`, {
-        cache: "no-store",
-      });
+      const response = await fetch(
+        `${baseUrl}/api/orders?${params.toString()}`,
+        {
+          cache: "no-store",
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to fetch orders for export");
@@ -222,7 +222,9 @@ export default function Page() {
 
       toast({
         title: "Export Successful",
-        description: `Exported ${mappedOrders.length} orders to ${format.toUpperCase()} successfully.`,
+        description: `Exported ${
+          mappedOrders.length
+        } orders to ${format.toUpperCase()} successfully.`,
       });
     } catch (error) {
       console.error("Export error:", error);
@@ -264,7 +266,7 @@ export default function Page() {
             <Button
               onClick={() => handleExport("excel")}
               variant="outline"
-              className="gap-2"
+              className="gap-2 hover:cursor-pointer"
             >
               <FileSpreadsheet className="h-4 w-4" />
               Export Excel
@@ -272,7 +274,7 @@ export default function Page() {
             <Button
               onClick={() => handleExport("pdf")}
               variant="outline"
-              className="gap-2"
+              className="gap-2 hover:cursor-pointer"
             >
               <FileText className="h-4 w-4" />
               Export PDF

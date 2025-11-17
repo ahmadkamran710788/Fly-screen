@@ -5,6 +5,7 @@ import {
   MeshCuttingStatus,
   QualityStatus,
 } from "@/types/order";
+import { get } from "http";
 
 // Helper to get property value from line item
 const getProp = (properties: any[], name: string) => {
@@ -41,6 +42,7 @@ export const mapOrder = (o: any): Order => {
             getProp(props, "Breite in cm") ||
             getProp(props, "Bredde i cm") ||
             getProp(props, "Largeur en cm") ||
+            getProp(props, "Width in cm") ||
             "0"
         ),
         height: parseFloat(
@@ -49,6 +51,7 @@ export const mapOrder = (o: any): Order => {
             getProp(props, "Höhe in cm") ||
             getProp(props, "Højde i cm") ||
             getProp(props, "Hauteur en cm") ||
+            getProp(props, "Height in cm") ||
             "0"
         ),
         profileColor:
@@ -56,14 +59,22 @@ export const mapOrder = (o: any): Order => {
           getProp(props, "Profil renk") ||
           getProp(props, "Profilfarbe") ||
           getProp(props, "Ramme farve") ||
+          getProp(props, "Frame colour") ||
           "-",
         orientation:
           getProp(props, "Schuifrichting") || getProp(props, "Yon") || "",
         installationType:
-          getProp(props, "Plaatsing") || getProp(props, "Kurulum") || "",
+          getProp(props, "Plaatsing") ||
+          getProp(props, "Kurulum") ||
+          getProp(props, "Installation method") ||
+          "",
         thresholdType:
           getProp(props, "Dorpeltype") || getProp(props, "Esik") || "",
-        meshType: getProp(props, "Soort gaas") || getProp(props, "Tul") || "",
+        meshType:
+          getProp(props, "Soort gaas") ||
+          getProp(props, "Tul") ||
+          getProp(props, "Type of mesh") ||
+          "",
         curtainType:
           getProp(props, "Type plissé gordijn") ||
           getProp(props, "Kanat") ||

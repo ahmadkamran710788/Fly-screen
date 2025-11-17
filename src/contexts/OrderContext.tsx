@@ -7,7 +7,7 @@ interface OrderContextType {
   updateItemStatus: (orderId: string, itemId: string, updates: Partial<OrderItem>) => Promise<void>;
   addBox: (orderId: string, box: Omit<Box, 'id'>) => Promise<void>;
   deleteBox: (orderId: string, boxId: string) => Promise<void>;
-  addOrder: (order: Omit<Order, 'id' | 'boxes'>) => void;
+  addOrder: (order: Omit<Order, 'id' | 'boxes'>) => Promise<void>;
   deleteOrder: (orderId: string) => void;
 }
 
@@ -136,13 +136,43 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const addOrder = (order: Omit<Order, 'id' | 'boxes'>) => {
-    const newOrder: Order = {
-      ...order,
-      id: `order-${Date.now()}`,
-      boxes: [],
-    };
-    setOrders(prevOrders => [newOrder, ...prevOrders]);
+  const addOrder = async (order: Omit<Order, 'id' | 'boxes'>) => {
+    try {
+      // Call API to create order
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderNumber: order.orderNumber,
+          orderDate: order.orderDate,
+          store: order.store,
+          items: order.items,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create order');
+      }
+
+      const result = await response.json();
+
+      // Create order object for local state
+      const newOrder: Order = {
+        ...order,
+        id: result.order.id,
+        boxes: [],
+      };
+
+      setOrders(prevOrders => [newOrder, ...prevOrders]);
+
+      console.log('Order created successfully:', result);
+    } catch (error) {
+      console.error('Error creating order:', error);
+      throw error; // Re-throw to let the component handle it
+    }
   };
 
   const deleteOrder = (orderId: string) => {

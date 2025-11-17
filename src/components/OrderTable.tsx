@@ -22,7 +22,7 @@ interface OrderTableProps {
 const OrderTable = ({ orders }: OrderTableProps) => {
   const getDeadline = (orderDate: Date) => {
     const deadline = new Date(orderDate);
-    deadline.setDate(deadline.getDate());
+    deadline.setDate(deadline.getDate() + 3); // Add 3 days to order date
     return deadline;
   };
 

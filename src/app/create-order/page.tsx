@@ -73,7 +73,10 @@ export default function Page() {
 
   const [store, setStore] = useState<Store>('.nl');
   const [itemCount, setItemCount] = useState(1);
+  const [orderDate, setOrderDate] = useState<string>(new Date().toISOString().split('T')[0]); // Default to today
   const [items, setItems] = useState<Partial<OrderItem>[]>([{}]);
+  const [errors, setErrors] = useState<Record<number, Record<string, string>>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (role !== 'Admin') {
@@ -85,61 +88,146 @@ export default function Page() {
     setItems(Array.from({ length: itemCount }, () => ({})));
   }, [itemCount]);
 
+  const validateDimension = (value: any, fieldName: string): string => {
+    if (!value && value !== 0) {
+      return `${fieldName} is required`;
+    }
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) {
+      return 'Please enter a valid number';
+    }
+    if (numValue <= 0) {
+      return 'Value must be greater than 0';
+    }
+    if (numValue > 500) {
+      return 'Maximum value is 500cm';
+    }
+    if (numValue < 10) {
+      return 'Minimum value is 10cm';
+    }
+    return '';
+  };
+
+  const validateSelectField = (value: any, fieldName: string): string => {
+    if (!value || value === '') {
+      return `${fieldName} is required`;
+    }
+    return '';
+  };
+
   const updateItem = (index: number, field: string, value: any) => {
     setItems(prev => {
       const newItems = [...prev];
       newItems[index] = { ...newItems[index], [field]: value };
       return newItems;
     });
+
+    // Clear error when user changes field
+    if (errors[index]?.[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [index]: {
+          ...prev[index],
+          [field]: ''
+        }
+      }));
+    }
   };
 
-  const handleSubmit = () => {
+  const validateItem = (item: Partial<OrderItem>, index: number): Record<string, string> => {
+    const itemErrors: Record<string, string> = {};
+
+    itemErrors.width = validateDimension(item.width, 'Width');
+    itemErrors.height = validateDimension(item.height, 'Height');
+    itemErrors.profileColor = validateSelectField(item.profileColor, 'Profile Color');
+    itemErrors.orientation = validateSelectField(item.orientation, 'Orientation');
+    itemErrors.installationType = validateSelectField(item.installationType, 'Installation Type');
+    itemErrors.thresholdType = validateSelectField(item.thresholdType, 'Threshold Type');
+    itemErrors.meshType = validateSelectField(item.meshType, 'Mesh Type');
+    itemErrors.curtainType = validateSelectField(item.curtainType, 'Curtain Type');
+    itemErrors.fabricColor = validateSelectField(item.fabricColor, 'Fabric Color');
+    itemErrors.closureType = validateSelectField(item.closureType, 'Closure Type');
+    itemErrors.mountingType = validateSelectField(item.mountingType, 'Mounting Type');
+
+    // Remove empty errors
+    Object.keys(itemErrors).forEach(key => {
+      if (itemErrors[key] === '') delete itemErrors[key];
+    });
+
+    return itemErrors;
+  };
+
+  const handleSubmit = async () => {
+    // Validate all items
+    const allErrors: Record<number, Record<string, string>> = {};
+    let hasErrors = false;
+
     for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      if (!item.width || !item.height || !item.profileColor || !item.orientation || 
-          !item.installationType || !item.thresholdType || !item.meshType || 
-          !item.curtainType || !item.fabricColor || !item.closureType || !item.mountingType) {
-        toast({
-          title: 'Validation Error',
-          description: `Please fill in all fields for Item ${i + 1}`,
-          variant: 'destructive',
-        });
-        return;
+      const itemErrors = validateItem(items[i], i);
+      if (Object.keys(itemErrors).length > 0) {
+        allErrors[i] = itemErrors;
+        hasErrors = true;
       }
     }
 
-    const orderNumber = `${Date.now()}`.slice(-4);
-    const completeItems: OrderItem[] = items.map((item, i) => ({
-      id: `${orderNumber}-${i + 1}`,
-      width: item.width!,
-      height: item.height!,
-      profileColor: item.profileColor!,
-      orientation: item.orientation!,
-      installationType: item.installationType!,
-      thresholdType: item.thresholdType!,
-      meshType: item.meshType!,
-      curtainType: item.curtainType!,
-      fabricColor: item.fabricColor!,
-      closureType: item.closureType!,
-      mountingType: item.mountingType!,
-      frameCuttingStatus: 'Pending',
-      meshCuttingStatus: 'Pending',
-      qualityStatus: 'Pending',
-    }));
+    setErrors(allErrors);
 
-    addOrder({
-      orderNumber,
-      orderDate: new Date(),
-      store,
-      items: completeItems,
-    });
+    if (hasErrors) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fix all errors in the form',
+        variant: 'destructive',
+      });
+      return;
+    }
 
-    toast({
-      title: 'Success',
-      description: 'Order created successfully',
-    });
+    setIsSubmitting(true);
 
-    router.push('/dashboard');
+    try {
+      // Generate order number in format UK278-XXXX (4-digit incrementing number)
+      const timestamp = Date.now().toString().slice(-4);
+      const orderNumber = `UK278-${timestamp}`;
+      const completeItems: OrderItem[] = items.map((item, i) => ({
+        id: `${orderNumber}-${i + 1}`,
+        width: item.width!,
+        height: item.height!,
+        profileColor: item.profileColor!,
+        orientation: item.orientation!,
+        installationType: item.installationType!,
+        thresholdType: item.thresholdType!,
+        meshType: item.meshType!,
+        curtainType: item.curtainType!,
+        fabricColor: item.fabricColor!,
+        closureType: item.closureType!,
+        mountingType: item.mountingType!,
+        frameCuttingStatus: 'Pending',
+        meshCuttingStatus: 'Pending',
+        qualityStatus: 'Pending',
+      }));
+
+      await addOrder({
+        orderNumber,
+        orderDate: new Date(orderDate),
+        store,
+        items: completeItems,
+      });
+
+      toast({
+        title: 'Success',
+        description: 'Order created successfully',
+      });
+
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Error creating order:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create order. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const options = (storeOptions as any)[store];
@@ -165,7 +253,7 @@ export default function Page() {
             <CardTitle>Create New Order</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="store">Store</Label>
                 <Select value={store} onValueChange={(value) => setStore(value as Store)}>
@@ -180,6 +268,16 @@ export default function Page() {
                     <SelectItem value=".uk">United Kingdom (.uk)</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="orderDate">Order Date</Label>
+                <Input
+                  id="orderDate"
+                  type="date"
+                  value={orderDate}
+                  onChange={(e) => setOrderDate(e.target.value)}
+                />
               </div>
 
               <div className="space-y-2">
@@ -207,32 +305,46 @@ export default function Page() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label>Width (cm)</Label>
+                  <Label>Width (cm)*</Label>
                   <Input
                     type="number"
+                    min="10"
+                    max="500"
+                    step="1"
                     value={item.width || ''}
-                    onChange={(e) => updateItem(index, 'width', parseFloat(e.target.value))}
+                    onChange={(e) => updateItem(index, 'width', e.target.value ? parseFloat(e.target.value) : '')}
                     placeholder="150"
+                    className={errors[index]?.width ? 'border-red-500 focus-visible:ring-red-500' : ''}
                   />
+                  {errors[index]?.width && (
+                    <p className="text-xs text-red-500 mt-1">{errors[index].width}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Height (cm)</Label>
+                  <Label>Height (cm)*</Label>
                   <Input
                     type="number"
+                    min="10"
+                    max="500"
+                    step="1"
                     value={item.height || ''}
-                    onChange={(e) => updateItem(index, 'height', parseFloat(e.target.value))}
+                    onChange={(e) => updateItem(index, 'height', e.target.value ? parseFloat(e.target.value) : '')}
                     placeholder="200"
+                    className={errors[index]?.height ? 'border-red-500 focus-visible:ring-red-500' : ''}
                   />
+                  {errors[index]?.height && (
+                    <p className="text-xs text-red-500 mt-1">{errors[index].height}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Profile Color</Label>
+                  <Label>Profile Color*</Label>
                   <Select
                     value={item.profileColor || ''}
                     onValueChange={(value) => updateItem(index, 'profileColor', value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={errors[index]?.profileColor ? 'border-red-500' : ''}>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -241,15 +353,18 @@ export default function Page() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors[index]?.profileColor && (
+                    <p className="text-xs text-red-500 mt-1">{errors[index].profileColor}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Orientation</Label>
+                  <Label>Orientation*</Label>
                   <Select
                     value={item.orientation || ''}
                     onValueChange={(value) => updateItem(index, 'orientation', value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={errors[index]?.orientation ? 'border-red-500' : ''}>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -258,15 +373,18 @@ export default function Page() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors[index]?.orientation && (
+                    <p className="text-xs text-red-500 mt-1">{errors[index].orientation}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Installation Type</Label>
+                  <Label>Installation Type*</Label>
                   <Select
                     value={item.installationType || ''}
                     onValueChange={(value) => updateItem(index, 'installationType', value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={errors[index]?.installationType ? 'border-red-500' : ''}>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -275,15 +393,18 @@ export default function Page() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors[index]?.installationType && (
+                    <p className="text-xs text-red-500 mt-1">{errors[index].installationType}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Threshold Type</Label>
+                  <Label>Threshold Type*</Label>
                   <Select
                     value={item.thresholdType || ''}
                     onValueChange={(value) => updateItem(index, 'thresholdType', value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={errors[index]?.thresholdType ? 'border-red-500' : ''}>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -292,15 +413,18 @@ export default function Page() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors[index]?.thresholdType && (
+                    <p className="text-xs text-red-500 mt-1">{errors[index].thresholdType}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Mesh Type</Label>
+                  <Label>Mesh Type*</Label>
                   <Select
                     value={item.meshType || ''}
                     onValueChange={(value) => updateItem(index, 'meshType', value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={errors[index]?.meshType ? 'border-red-500' : ''}>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -309,15 +433,18 @@ export default function Page() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors[index]?.meshType && (
+                    <p className="text-xs text-red-500 mt-1">{errors[index].meshType}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Curtain Type</Label>
+                  <Label>Curtain Type*</Label>
                   <Select
                     value={item.curtainType || ''}
                     onValueChange={(value) => updateItem(index, 'curtainType', value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={errors[index]?.curtainType ? 'border-red-500' : ''}>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -326,15 +453,18 @@ export default function Page() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors[index]?.curtainType && (
+                    <p className="text-xs text-red-500 mt-1">{errors[index].curtainType}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Fabric Color</Label>
+                  <Label>Fabric Color*</Label>
                   <Select
                     value={item.fabricColor || ''}
                     onValueChange={(value) => updateItem(index, 'fabricColor', value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={errors[index]?.fabricColor ? 'border-red-500' : ''}>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -343,15 +473,18 @@ export default function Page() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors[index]?.fabricColor && (
+                    <p className="text-xs text-red-500 mt-1">{errors[index].fabricColor}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Closure Type</Label>
+                  <Label>Closure Type*</Label>
                   <Select
                     value={item.closureType || ''}
                     onValueChange={(value) => updateItem(index, 'closureType', value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={errors[index]?.closureType ? 'border-red-500' : ''}>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -360,15 +493,18 @@ export default function Page() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors[index]?.closureType && (
+                    <p className="text-xs text-red-500 mt-1">{errors[index].closureType}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Mounting Type</Label>
+                  <Label>Mounting Type*</Label>
                   <Select
                     value={item.mountingType || ''}
                     onValueChange={(value) => updateItem(index, 'mountingType', value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={errors[index]?.mountingType ? 'border-red-500' : ''}>
                       <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -377,6 +513,9 @@ export default function Page() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors[index]?.mountingType && (
+                    <p className="text-xs text-red-500 mt-1">{errors[index].mountingType}</p>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -384,10 +523,10 @@ export default function Page() {
         ))}
 
         <div className="flex gap-4">
-          <Button onClick={handleSubmit} className="flex-1" size="lg">
-            Create Order
+          <Button onClick={handleSubmit} className="flex-1" size="lg" disabled={isSubmitting}>
+            {isSubmitting ? 'Creating Order...' : 'Create Order'}
           </Button>
-          <Button variant="outline" onClick={() => router.push('/dashboard')} size="lg">
+          <Button variant="outline" onClick={() => router.push('/dashboard')} size="lg" disabled={isSubmitting}>
             Cancel
           </Button>
         </div>

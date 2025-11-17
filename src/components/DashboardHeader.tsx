@@ -1,36 +1,49 @@
-'use client';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Factory, LogOut, Plus } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+"use client";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Factory, LogOut, Plus } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 const DashboardHeader = () => {
   const { role, logout } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [store, setStore] = useState<'nl' | 'de' | 'uk' | 'fr' | 'dk'>('nl');
+  const [store, setStore] = useState<"nl" | "de" | "uk" | "fr" | "dk">("nl");
 
   const handleLogout = () => {
     logout();
-    router.push('/');
+    router.push("/");
   };
 
   const handleCreateOrder = () => {
-    router.push('/create-order');
+    router.push("/create-order");
   };
 
   const handleSync = async () => {
     try {
-      const res = await fetch(`/api/sync?store=${store}`, { method: 'POST' });
+      const res = await fetch(`/api/sync?store=${store}`, { method: "POST" });
       const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error || 'Sync failed');
-      toast({ title: 'Sync completed', description: `Store: ${data.store} | Products: ${data.counts.products} | Orders: ${data.counts.orders}` });
+      if (!res.ok || !data.ok) throw new Error(data.error || "Sync failed");
+      toast({
+        title: "Sync completed",
+        description: `Store: ${data.store} | Products: ${data.counts.products} | Orders: ${data.counts.orders}`,
+      });
     } catch (e: any) {
-      toast({ title: 'Sync failed', description: e.message, variant: 'destructive' });
+      toast({
+        title: "Sync failed",
+        description: e.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -44,8 +57,12 @@ const DashboardHeader = () => {
                 <Factory className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-foreground">Flyscreen Manufacturing</h1>
-                <p className="text-sm text-muted-foreground">Production Dashboard</p>
+                <h1 className="text-xl font-bold text-foreground">
+                  Flyscreen Manufacturing
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Production Dashboard
+                </p>
               </div>
             </div>
           </div>
@@ -68,20 +85,33 @@ const DashboardHeader = () => {
                   <SelectItem value="uk">.uk</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" onClick={handleSync}>
+              <Button
+                variant="outline"
+                className="hover:cursor-pointer"
+                onClick={handleSync}
+              >
                 Sync Store
               </Button>
             </div>
 
-            {role === 'Admin' && (
-              <Button onClick={handleCreateOrder} size="sm" className="gap-2">
+            {role === "Admin" && (
+              <Button
+                onClick={handleCreateOrder}
+                size="sm"
+                className="gap-2 hover:cursor-pointer"
+              >
                 <Plus className="h-4 w-4" />
                 Create Order
               </Button>
             )}
 
-            <Button onClick={handleLogout} variant="outline" size="sm" className="gap-2">
-              <LogOut className="h-4 w-4" />
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              size="sm"
+              className="gap-2 hover:cursor-pointer"
+            >
+              <LogOut className="h-4 w-4 " />
               Logout
             </Button>
           </div>

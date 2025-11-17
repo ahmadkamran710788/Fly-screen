@@ -3,6 +3,209 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { OrderModel } from "@/models/Order";
 import { requireAuth } from "@/lib/auth-helper";
 
+export async function POST(req: NextRequest) {
+  try {
+    // Authenticate user and connect to DB
+    const [user] = await Promise.all([requireAuth(req), connectToDatabase()]);
+
+    // Only Admin can create manual orders
+    if (user.role !== "Admin") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const { orderNumber, orderDate, store, items } = body;
+
+    // Validate required fields
+    if (
+      !orderNumber ||
+      !store ||
+      !items ||
+      !Array.isArray(items) ||
+      items.length === 0
+    ) {
+      return NextResponse.json(
+        { error: "Missing required fields: orderNumber, store, items" },
+        { status: 400 }
+      );
+    }
+
+    // Transform frontend data to backend schema
+    const storeKey = store.replace(".", ""); // Convert .nl to nl
+
+    // Map store to property names (matching your existing system)
+    const getPropertyNames = (storeKey: string) => {
+      switch (storeKey) {
+        case "nl":
+          return {
+            width: "Breedte in cm",
+            height: "Hoogte in cm",
+            profileColor: "Profielkleur:",
+            orientation: "Schuifrichting",
+            installation: "Plaatsing",
+            threshold: "Dorpeltype",
+            mesh: "Soort gaas",
+            curtain: "Type plissé gordijn",
+            fabricColor: "Kleur plissé gordijn",
+            closure: "Sluiting",
+            mounting: "Montagewijze",
+          };
+        case "de":
+          return {
+            width: "Breite in cm",
+            height: "Höhe in cm",
+            profileColor: "Profilfarbe",
+            orientation: "Schuifrichting",
+            installation: "Plaatsing",
+            threshold: "Dorpeltype",
+            mesh: "Soort gaas",
+            curtain: "Type plissé gordijn",
+            fabricColor: "Kleur plissé gordijn",
+            closure: "Sluiting",
+            mounting: "Montagewijze",
+          };
+        case "dk":
+          return {
+            width: "Bredde i cm",
+            height: "Højde i cm",
+            profileColor: "Ramme farve",
+            orientation: "Schuifrichting",
+            installation: "Plaatsing",
+            threshold: "Dorpeltype",
+            mesh: "Soort gaas",
+            curtain: "Type plissé gordijn",
+            fabricColor: "Kleur plissé gordijn",
+            closure: "Sluiting",
+            mounting: "Montagewijze",
+          };
+        case "fr":
+          return {
+            width: "Largeur en cm",
+            height: "Hauteur en cm",
+            profileColor: "Profilfarbe",
+            orientation: "Schuifrichting",
+            installation: "Plaatsing",
+            threshold: "Dorpeltype",
+            mesh: "Soort gaas",
+            curtain: "Type plissé gordijn",
+            fabricColor: "Kleur plissé gordijn",
+            closure: "Sluiting",
+            mounting: "Montagewijze",
+          };
+        case "uk":
+          return {
+            width: "En",
+            height: "Boy",
+            profileColor: "Profil renk",
+            orientation: "Yon",
+            installation: "Kurulum",
+            threshold: "Esik",
+            mesh: "Tul",
+            curtain: "Kanat",
+            fabricColor: "Kumas renk",
+            closure: "Kapatma",
+            mounting: "Montaj",
+          };
+        default:
+          return getPropertyNames("nl");
+      }
+    };
+
+    const propNames = getPropertyNames(storeKey);
+
+    const lineItems = items.map((item: any) => {
+      // Create properties array matching your existing Shopify format
+      const properties = [
+        { name: propNames.width, value: String(item.width) },
+        { name: propNames.height, value: String(item.height) },
+        { name: propNames.profileColor, value: item.profileColor },
+        { name: propNames.orientation, value: item.orientation },
+        { name: propNames.installation, value: item.installationType },
+        { name: propNames.threshold, value: item.thresholdType },
+        { name: propNames.mesh, value: item.meshType },
+        { name: propNames.curtain, value: item.curtainType },
+        { name: propNames.fabricColor, value: item.fabricColor },
+        { name: propNames.closure, value: item.closureType },
+        { name: propNames.mounting, value: item.mountingType },
+      ];
+
+      return {
+        id: item.id,
+        productId: `product-${item.id}`,
+        variantId: `variant-${item.id}`,
+        title: `${item.orientation} - ${item.width}cm x ${item.height}cm`,
+        variantTitle: `${item.profileColor} / ${item.fabricColor}`,
+        quantity: 1,
+        price: "0.00",
+        sku: `MANUAL-${item.id}`,
+        properties,
+        frameCuttingStatus: item.frameCuttingStatus || "Pending",
+        meshCuttingStatus: item.meshCuttingStatus || "Pending",
+        qualityStatus: item.qualityStatus || "Pending",
+      };
+    });
+
+    // Create raw object that mirrors Shopify format for complete compatibility
+    const rawLineItems = lineItems.map((li: any) => ({
+      ...li,
+      properties: li.properties,
+    }));
+
+    // Create order document
+    const order = new OrderModel({
+      storeKey,
+      shopifyId: `manual-${Date.now()}`,
+      name: `#${orderNumber}`,
+      email: "manual@order.com",
+      phone: "",
+      note: "Manually created order",
+      financialStatus: "paid",
+      fulfillmentStatus: "unfulfilled",
+      currency: "EUR",
+      totalPrice: "0.00",
+      subtotalPrice: "0.00",
+      totalDiscounts: "0.00",
+      totalTax: "0.00",
+      status: "Pending",
+      lineItems,
+      boxes: [],
+      processedAt: orderDate ? new Date(orderDate) : new Date(),
+      raw: {
+        manualOrder: true,
+        items,
+        line_items: rawLineItems, // Include properties in raw for order details page
+      },
+    });
+
+    await order.save();
+
+    return NextResponse.json(
+      {
+        success: true,
+        order: {
+          id: order._id.toString(),
+          orderNumber,
+          storeKey,
+          status: order.status,
+          createdAt: order.createdAt,
+        },
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("❌ Error creating manual order:", error);
+
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     // Run auth and DB connect in parallel
@@ -19,8 +222,7 @@ export async function GET(req: NextRequest) {
     const orderNumber = searchParams.get("orderNumber");
     const stores = searchParams.get("stores");
     const statuses = searchParams.get("statuses");
-    const dateFrom = searchParams.get("dateFrom");
-    const dateTo = searchParams.get("dateTo");
+    const orderDate = searchParams.get("orderDate");
     const deadlineStatus = searchParams.get("deadlineStatus");
 
     // Calculate skip
@@ -51,21 +253,22 @@ export async function GET(req: NextRequest) {
       filterQuery.status = { $in: statusArray };
     }
 
-    // Filter by date range (using processedAt or createdAt as fallback)
-    if (dateFrom || dateTo) {
-      const dateFilter: Record<string, any> = {};
-      if (dateFrom) {
-        dateFilter.$gte = new Date(dateFrom);
-      }
-      if (dateTo) {
-        const toDate = new Date(dateTo);
-        toDate.setHours(23, 59, 59, 999);
-        dateFilter.$lte = toDate;
-      }
+    // Filter by order date (using processedAt or createdAt as fallback)
+    if (orderDate) {
+      const dateStart = new Date(orderDate);
+      dateStart.setHours(0, 0, 0, 0);
+      const dateEnd = new Date(orderDate);
+      dateEnd.setHours(23, 59, 59, 999);
+
       // Use $or to check both processedAt and createdAt
       filterQuery.$or = [
-        { processedAt: dateFilter },
-        { createdAt: dateFilter },
+        { processedAt: { $gte: dateStart, $lte: dateEnd } },
+        {
+          $and: [
+            { processedAt: { $exists: false } },
+            { createdAt: { $gte: dateStart, $lte: dateEnd } },
+          ],
+        },
       ];
     }
 
