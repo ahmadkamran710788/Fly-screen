@@ -75,6 +75,7 @@ const OrderTable = ({ orders }: OrderTableProps) => {
           <TableRow>
             <TableHead>Order Number</TableHead>
             <TableHead>Order Date</TableHead>
+            <TableHead>Delivery Date</TableHead>
             <TableHead>Store</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Items</TableHead>
@@ -86,7 +87,7 @@ const OrderTable = ({ orders }: OrderTableProps) => {
           {orders.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={7}
+                colSpan={8}
                 className="text-center py-8 text-muted-foreground"
               >
                 No orders found
@@ -100,6 +101,7 @@ const OrderTable = ({ orders }: OrderTableProps) => {
                   (order as any).createdAt ??
                   Date.now()
               );
+              const deliveryDate = getDeadline(orderDate);
               const deadline = getDeadlineStatus(orderDate);
               const itemCount =
                 order.items?.length ?? (order as any).lineItems?.length ?? 0;
@@ -110,6 +112,7 @@ const OrderTable = ({ orders }: OrderTableProps) => {
                     {order.orderNumber}
                   </TableCell>
                   <TableCell>{format(orderDate, "dd/MM/yyyy")}</TableCell>
+                  <TableCell>{format(deliveryDate, "dd/MM/yyyy")}</TableCell>
                   <TableCell>
                     <Badge variant="outline">
                       {order.store || (order as any).storeKey}

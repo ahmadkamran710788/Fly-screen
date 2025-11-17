@@ -205,7 +205,7 @@ const BoxManagement = ({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Paket Bilgileri (Package Information)</span>
+          <span>Package Information</span>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2">

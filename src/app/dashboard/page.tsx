@@ -52,6 +52,9 @@ async function getOrders(
   if (filters?.orderDate) {
     params.append("orderDate", filters.orderDate);
   }
+  if (filters?.deliveryDate) {
+    params.append("deliveryDate", filters.deliveryDate);
+  }
   if (filters?.deadlineStatus && filters.deadlineStatus !== "all") {
     params.append("deadlineStatus", filters.deadlineStatus);
   }
@@ -85,6 +88,7 @@ export default function Page() {
     stores: [],
     statuses: [],
     orderDate: "",
+    deliveryDate: "",
     deadlineStatus: "all",
   });
 

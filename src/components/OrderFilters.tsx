@@ -21,6 +21,7 @@ export interface FilterState {
   stores: string[]; // Changed from Store[] to string[]
   statuses: string[]; // Overall order statuses
   orderDate: string;
+  deliveryDate: string;
   deadlineStatus: string;
 }
 
@@ -30,6 +31,7 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
     stores: [],
     statuses: [],
     orderDate: "",
+    deliveryDate: "",
     deadlineStatus: "all",
   });
 
@@ -55,6 +57,7 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
       stores: [],
       statuses: [],
       orderDate: "",
+      deliveryDate: "",
       deadlineStatus: "all",
     };
     setFilters(resetFilters);
@@ -183,6 +186,17 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
               className="hover:cursor-pointer"
               value={filters.orderDate}
               onChange={(e) => updateFilters({ orderDate: e.target.value })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="deliveryDate">Delivery Date</Label>
+            <Input
+              id="deliveryDate"
+              type="date"
+              className="hover:cursor-pointer"
+              value={filters.deliveryDate}
+              onChange={(e) => updateFilters({ deliveryDate: e.target.value })}
             />
           </div>
 

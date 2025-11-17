@@ -223,6 +223,7 @@ export async function GET(req: NextRequest) {
     const stores = searchParams.get("stores");
     const statuses = searchParams.get("statuses");
     const orderDate = searchParams.get("orderDate");
+    const deliveryDate = searchParams.get("deliveryDate");
     const deadlineStatus = searchParams.get("deadlineStatus");
 
     // Calculate skip
@@ -267,6 +268,35 @@ export async function GET(req: NextRequest) {
           $and: [
             { processedAt: { $exists: false } },
             { createdAt: { $gte: dateStart, $lte: dateEnd } },
+          ],
+        },
+      ];
+    }
+
+    // Filter by delivery date (order date + 3 days)
+    if (deliveryDate) {
+      const selectedDeliveryDate = new Date(deliveryDate);
+      selectedDeliveryDate.setHours(0, 0, 0, 0);
+
+      // Calculate the order date range that would result in this delivery date
+      // If delivery date = order date + 3 days, then order date = delivery date - 3 days
+      const orderDateStart = new Date(selectedDeliveryDate);
+      orderDateStart.setDate(orderDateStart.getDate() - 3);
+      orderDateStart.setHours(0, 0, 0, 0);
+
+      const orderDateEnd = new Date(selectedDeliveryDate);
+      orderDateEnd.setDate(orderDateEnd.getDate() - 3);
+      orderDateEnd.setHours(23, 59, 59, 999);
+
+      // Combine with existing $or conditions if they exist
+      const existingOr = filterQuery.$or || [];
+      filterQuery.$or = [
+        ...existingOr,
+        { processedAt: { $gte: orderDateStart, $lte: orderDateEnd } },
+        {
+          $and: [
+            { processedAt: { $exists: false } },
+            { createdAt: { $gte: orderDateStart, $lte: orderDateEnd } },
           ],
         },
       ];
