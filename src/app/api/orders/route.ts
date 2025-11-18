@@ -232,8 +232,9 @@ export async function GET(req: NextRequest) {
     // Build sort object
     const sortOptions: Record<string, 1 | -1> = { [sortField]: sortDirection };
 
-    // Build filter query
+    // Build filter query - use $and to combine multiple filters properly
     const filterQuery: Record<string, any> = {};
+    const andConditions: any[] = [];
 
     // Filter by order number (search in name field)
     if (orderNumber) {
@@ -261,16 +262,18 @@ export async function GET(req: NextRequest) {
       const dateEnd = new Date(orderDate);
       dateEnd.setHours(23, 59, 59, 999);
 
-      // Use $or to check both processedAt and createdAt
-      filterQuery.$or = [
-        { processedAt: { $gte: dateStart, $lte: dateEnd } },
-        {
-          $and: [
-            { processedAt: { $exists: false } },
-            { createdAt: { $gte: dateStart, $lte: dateEnd } },
-          ],
-        },
-      ];
+      // Add as $or condition to check both processedAt and createdAt
+      andConditions.push({
+        $or: [
+          { processedAt: { $gte: dateStart, $lte: dateEnd } },
+          {
+            $and: [
+              { processedAt: { $exists: false } },
+              { createdAt: { $gte: dateStart, $lte: dateEnd } },
+            ],
+          },
+        ],
+      });
     }
 
     // Filter by delivery date (order date + 3 days)
@@ -288,18 +291,18 @@ export async function GET(req: NextRequest) {
       orderDateEnd.setDate(orderDateEnd.getDate() - 3);
       orderDateEnd.setHours(23, 59, 59, 999);
 
-      // Combine with existing $or conditions if they exist
-      const existingOr = filterQuery.$or || [];
-      filterQuery.$or = [
-        ...existingOr,
-        { processedAt: { $gte: orderDateStart, $lte: orderDateEnd } },
-        {
-          $and: [
-            { processedAt: { $exists: false } },
-            { createdAt: { $gte: orderDateStart, $lte: orderDateEnd } },
-          ],
-        },
-      ];
+      // Add as separate condition in $and array
+      andConditions.push({
+        $or: [
+          { processedAt: { $gte: orderDateStart, $lte: orderDateEnd } },
+          {
+            $and: [
+              { processedAt: { $exists: false } },
+              { createdAt: { $gte: orderDateStart, $lte: orderDateEnd } },
+            ],
+          },
+        ],
+      });
     }
 
     // Filter by deadline status (calculated based on processedAt or createdAt + 3 days)
@@ -313,17 +316,18 @@ export async function GET(req: NextRequest) {
           const overdueDate = new Date();
           overdueDate.setDate(overdueDate.getDate() - 3);
           overdueDate.setHours(23, 59, 59, 999);
-          const orCondition = filterQuery.$or || [];
-          filterQuery.$or = [
-            ...orCondition,
-            { processedAt: { $lt: overdueDate } },
-            {
-              $and: [
-                { processedAt: { $exists: false } },
-                { createdAt: { $lt: overdueDate } },
-              ],
-            },
-          ];
+
+          andConditions.push({
+            $or: [
+              { processedAt: { $lt: overdueDate } },
+              {
+                $and: [
+                  { processedAt: { $exists: false } },
+                  { createdAt: { $lt: overdueDate } },
+                ],
+              },
+            ],
+          });
           break;
         case "today":
           // Orders where date + 3 days = today
@@ -332,24 +336,25 @@ export async function GET(req: NextRequest) {
           const todayDeadlineEnd = new Date(today);
           todayDeadlineEnd.setDate(todayDeadlineEnd.getDate() - 3);
           todayDeadlineEnd.setHours(23, 59, 59, 999);
-          const orCondition2 = filterQuery.$or || [];
-          filterQuery.$or = [
-            ...orCondition2,
-            {
-              processedAt: { $gte: todayDeadlineStart, $lte: todayDeadlineEnd },
-            },
-            {
-              $and: [
-                { processedAt: { $exists: false } },
-                {
-                  createdAt: {
-                    $gte: todayDeadlineStart,
-                    $lte: todayDeadlineEnd,
+
+          andConditions.push({
+            $or: [
+              {
+                processedAt: { $gte: todayDeadlineStart, $lte: todayDeadlineEnd },
+              },
+              {
+                $and: [
+                  { processedAt: { $exists: false } },
+                  {
+                    createdAt: {
+                      $gte: todayDeadlineStart,
+                      $lte: todayDeadlineEnd,
+                    },
                   },
-                },
-              ],
-            },
-          ];
+                ],
+              },
+            ],
+          });
           break;
         case "week":
           // Orders where date + 3 days is between today and 7 days from now
@@ -360,19 +365,25 @@ export async function GET(req: NextRequest) {
           weekStart.setDate(weekStart.getDate() - 3);
           const weekDeadlineEnd = new Date(weekEnd);
           weekDeadlineEnd.setDate(weekDeadlineEnd.getDate() - 3);
-          const orCondition3 = filterQuery.$or || [];
-          filterQuery.$or = [
-            ...orCondition3,
-            { processedAt: { $gte: weekStart, $lte: weekDeadlineEnd } },
-            {
-              $and: [
-                { processedAt: { $exists: false } },
-                { createdAt: { $gte: weekStart, $lte: weekDeadlineEnd } },
-              ],
-            },
-          ];
+
+          andConditions.push({
+            $or: [
+              { processedAt: { $gte: weekStart, $lte: weekDeadlineEnd } },
+              {
+                $and: [
+                  { processedAt: { $exists: false } },
+                  { createdAt: { $gte: weekStart, $lte: weekDeadlineEnd } },
+                ],
+              },
+            ],
+          });
           break;
       }
+    }
+
+    // Combine all conditions with $and if there are any
+    if (andConditions.length > 0) {
+      filterQuery.$and = andConditions;
     }
 
     // Fetch orders and total count in parallel
