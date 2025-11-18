@@ -357,22 +357,25 @@ export async function GET(req: NextRequest) {
           });
           break;
         case "week":
-          // Orders where date + 3 days is between today and 7 days from now
-          const weekEnd = new Date(today);
-          weekEnd.setDate(weekEnd.getDate() + 7);
-          weekEnd.setHours(23, 59, 59, 999);
-          const weekStart = new Date(today);
-          weekStart.setDate(weekStart.getDate() - 3);
-          const weekDeadlineEnd = new Date(weekEnd);
-          weekDeadlineEnd.setDate(weekDeadlineEnd.getDate() - 3);
+          // Orders where deadline (date + 3 days) is between today and 7 days from now (inclusive)
+          // If deadline = orderDate + 3, then orderDate = deadline - 3
+          // We want deadlines from today (included) to (today + 7)
+          // So orderDates from (today - 3) to (today + 7 - 3) = (today - 3) to (today + 4)
+          const weekOrderStart = new Date(today);
+          weekOrderStart.setDate(weekOrderStart.getDate() - 3); // today's deadline - 3 days
+          weekOrderStart.setHours(0, 0, 0, 0);
+
+          const weekOrderEnd = new Date(today);
+          weekOrderEnd.setDate(weekOrderEnd.getDate() + 4); // (today + 7) deadline - 3 days
+          weekOrderEnd.setHours(23, 59, 59, 999);
 
           andConditions.push({
             $or: [
-              { processedAt: { $gte: weekStart, $lte: weekDeadlineEnd } },
+              { processedAt: { $gte: weekOrderStart, $lte: weekOrderEnd } },
               {
                 $and: [
                   { processedAt: { $exists: false } },
-                  { createdAt: { $gte: weekStart, $lte: weekDeadlineEnd } },
+                  { createdAt: { $gte: weekOrderStart, $lte: weekOrderEnd } },
                 ],
               },
             ],
