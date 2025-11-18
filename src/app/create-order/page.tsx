@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Plus, Minus } from "lucide-react";
 import { Store, OrderItem } from "@/types/order";
 import { useToast } from "@/hooks/use-toast";
 
@@ -351,21 +351,31 @@ export default function Page() {
 
               <div className="space-y-2">
                 <Label htmlFor="itemCount">Number of Items</Label>
-                <Select
-                  value={itemCount.toString()}
-                  onValueChange={(value) => setItemCount(parseInt(value))}
-                >
-                  <SelectTrigger id="itemCount">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 3, 4, 5].map((num) => (
-                      <SelectItem key={num} value={num.toString()}>
-                        {num}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setItemCount(Math.max(1, itemCount - 1))}
+                    disabled={itemCount <= 1}
+                    className="h-10 w-10"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <div className="flex-1 h-10 flex items-center justify-center border rounded-md bg-background font-medium">
+                    {itemCount}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setItemCount(Math.min(10, itemCount + 1))}
+                    disabled={itemCount >= 10}
+                    className="h-10 w-10"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>
