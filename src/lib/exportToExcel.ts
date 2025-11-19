@@ -2,6 +2,24 @@ import * as XLSX from 'xlsx';
 import { Order, OrderItem, Store } from '@/types/order';
 import { mapToTurkish, extractColorCode } from './mappings';
 
+// Calculate overall status of an order
+const getOverallStatus = (order: Order): string => {
+  // Check if all items have qualityStatus === "Packed"
+  const allPacked = order.items?.every((item) => item.qualityStatus === "Packed");
+
+  // Check if all items are still pending (all 3 statuses are pending)
+  const allPending = order.items?.every(
+    (item) =>
+      item.frameCuttingStatus === "Pending" &&
+      item.meshCuttingStatus === "Pending" &&
+      item.qualityStatus === "Pending"
+  );
+
+  if (allPacked) return "Completed";
+  if (allPending) return "Pending";
+  return "In Progress";
+};
+
 // Frame Cutting calculations
 const calculateFrameCutting = (item: OrderItem, store: Store) => ({
   en: item.width - 5,
@@ -40,10 +58,12 @@ const createAllOrdersSheet = (orders: Order[]) => {
     'Frame Cutting Status',
     'Mesh Cutting Status',
     'Quality Status',
+    'Overall Status',
   ]);
 
   // Data rows
   orders.forEach((order) => {
+    const overallStatus = getOverallStatus(order);
     order.items.forEach((item) => {
       data.push([
         order.orderNumber,
@@ -55,6 +75,7 @@ const createAllOrdersSheet = (orders: Order[]) => {
         item.frameCuttingStatus,
         item.meshCuttingStatus,
         item.qualityStatus,
+        overallStatus,
       ]);
     });
   });

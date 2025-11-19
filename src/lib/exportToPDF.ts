@@ -3,6 +3,24 @@ import autoTable from 'jspdf-autotable';
 import { Order, OrderItem, Store } from '@/types/order';
 import { mapToTurkish, extractColorCode } from './mappings';
 
+// Calculate overall status of an order
+const getOverallStatus = (order: Order): string => {
+  // Check if all items have qualityStatus === "Packed"
+  const allPacked = order.items?.every((item) => item.qualityStatus === "Packed");
+
+  // Check if all items are still pending (all 3 statuses are pending)
+  const allPending = order.items?.every(
+    (item) =>
+      item.frameCuttingStatus === "Pending" &&
+      item.meshCuttingStatus === "Pending" &&
+      item.qualityStatus === "Pending"
+  );
+
+  if (allPacked) return "Completed";
+  if (allPending) return "Pending";
+  return "In Progress";
+};
+
 // Frame Cutting calculations
 const calculateFrameCutting = (item: OrderItem, store: Store) => ({
   en: item.width - 5,
@@ -31,6 +49,7 @@ const addAllOrdersTable = (doc: jsPDF, orders: Order[], startY: number = 20) => 
   const tableData: any[] = [];
 
   orders.forEach((order) => {
+    const overallStatus = getOverallStatus(order);
     order.items.forEach((item) => {
       tableData.push([
         order.orderNumber,
@@ -42,6 +61,7 @@ const addAllOrdersTable = (doc: jsPDF, orders: Order[], startY: number = 20) => 
         item.frameCuttingStatus,
         item.meshCuttingStatus,
         item.qualityStatus,
+        overallStatus,
       ]);
     });
   });
@@ -59,6 +79,7 @@ const addAllOrdersTable = (doc: jsPDF, orders: Order[], startY: number = 20) => 
         'Frame Status',
         'Mesh Status',
         'Quality Status',
+        'Overall Status',
       ],
     ],
     body: tableData,

@@ -113,11 +113,11 @@ export default function LoginPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email*</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@company.com"
+                placeholder="Enter Email"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
@@ -134,12 +134,12 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Password*</Label>
               <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="Enter Password"
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
@@ -183,12 +183,6 @@ export default function LoginPage() {
                 "Sign In"
               )}
             </Button>
-
-            <div className="text-center text-sm text-muted-foreground space-y-1">
-              <p className="font-medium">Demo Credentials:</p>
-              <p className="text-xs">Email: admin@company.com</p>
-              <p className="text-xs">Password: admin123</p>
-            </div>
           </form>
         </CardContent>
       </Card>

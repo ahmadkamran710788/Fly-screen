@@ -415,8 +415,8 @@ export default function Page() {
                     type="button"
                     variant="outline"
                     size="icon"
-                    onClick={() => setItemCount(Math.min(10, itemCount + 1))}
-                    disabled={itemCount >= 10}
+                    onClick={() => setItemCount(itemCount + 1)}
+                    // disabled={itemCount >= 10}
                     className="h-10 w-10"
                   >
                     <Plus className="h-4 w-4" />
