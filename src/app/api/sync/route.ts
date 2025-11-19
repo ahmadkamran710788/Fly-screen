@@ -3,6 +3,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { shopify } from "@/lib/shopify";
 import { ProductModel } from "@/models/Product";
 import { OrderModel } from "@/models/Order";
+import { calculateOrderStatus } from "@/lib/orderStatusHelper";
 
 function assertStoreParam(searchParams: URLSearchParams) {
   const store = searchParams.get("store") as "nl" | "de" | "uk" | "fr" | "dk" | null;
@@ -57,8 +58,50 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Upsert orders
+    // Upsert orders - preserve existing line item statuses
     for (const o of orders) {
+      // First, check if order already exists to preserve statuses
+      const existingOrder = await OrderModel.findOne({ shopifyId: String(o.id) }).lean();
+
+      // Create a map of existing line item statuses
+      const existingStatusMap = new Map();
+      if (existingOrder?.lineItems) {
+        existingOrder.lineItems.forEach((item: any) => {
+          existingStatusMap.set(String(item.id), {
+            frameCuttingStatus: item.frameCuttingStatus || "Pending",
+            meshCuttingStatus: item.meshCuttingStatus || "Pending",
+            qualityStatus: item.qualityStatus || "Pending",
+          });
+        });
+      }
+
+      // Map line items, preserving existing statuses or defaulting to Pending
+      const lineItems = (o.line_items || []).map((li: any) => {
+        const lineItemId = String(li.id);
+        const existingStatuses = existingStatusMap.get(lineItemId) || {
+          frameCuttingStatus: "Pending",
+          meshCuttingStatus: "Pending",
+          qualityStatus: "Pending",
+        };
+
+        return {
+          id: lineItemId,
+          productId: li.product_id ? String(li.product_id) : undefined,
+          variantId: li.variant_id ? String(li.variant_id) : undefined,
+          title: li.title,
+          variantTitle: li.variant_title,
+          quantity: li.quantity,
+          price: li.price,
+          sku: li.sku,
+          frameCuttingStatus: existingStatuses.frameCuttingStatus,
+          meshCuttingStatus: existingStatuses.meshCuttingStatus,
+          qualityStatus: existingStatuses.qualityStatus,
+        };
+      });
+
+      // Calculate the order status based on line items
+      const orderStatus = calculateOrderStatus(lineItems);
+
       await OrderModel.findOneAndUpdate(
         { shopifyId: String(o.id) },
         {
@@ -75,6 +118,7 @@ export async function POST(req: NextRequest) {
           subtotalPrice: o.subtotal_price,
           totalDiscounts: o.total_discounts,
           totalTax: o.total_tax,
+          status: orderStatus,
           customer: o.customer
             ? {
                 id: String(o.customer.id),
@@ -85,16 +129,7 @@ export async function POST(req: NextRequest) {
                 tags: (o.customer.tags as string)?.split(",").map((t) => t.trim()).filter(Boolean) || [],
               }
             : undefined,
-          lineItems: (o.line_items || []).map((li: any) => ({
-            id: String(li.id),
-            productId: li.product_id ? String(li.product_id) : undefined,
-            variantId: li.variant_id ? String(li.variant_id) : undefined,
-            title: li.title,
-            variantTitle: li.variant_title,
-            quantity: li.quantity,
-            price: li.price,
-            sku: li.sku,
-          })),
+          lineItems,
           shippingAddress: o.shipping_address,
           billingAddress: o.billing_address,
           raw: o,

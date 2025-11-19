@@ -4,7 +4,11 @@ import { OrderModel } from "@/models/Order";
 import crypto from "crypto";
 
 // Shopify webhook signature verification
-function verifyShopifyWebhook(body: string, hmacHeader: string, secret: string): boolean {
+function verifyShopifyWebhook(
+  body: string,
+  hmacHeader: string,
+  secret: string
+): boolean {
   const hash = crypto
     .createHmac("sha256", secret)
     .update(body, "utf8")
@@ -13,7 +17,9 @@ function verifyShopifyWebhook(body: string, hmacHeader: string, secret: string):
 }
 
 // Helper to determine store from shop domain
-function getStoreKeyFromShop(shop: string): "nl" | "de" | "uk" | "fr" | "dk" | null {
+function getStoreKeyFromShop(
+  shop: string
+): "nl" | "de" | "uk" | "fr" | "dk" | null {
   if (shop.includes(process.env.SHOPIFY_NL_SHOP || "")) return "nl";
   if (shop.includes(process.env.SHOPIFY_DE_SHOP || "")) return "de";
   if (shop.includes(process.env.SHOPIFY_UK_SHOP || "")) return "uk";
@@ -75,10 +81,7 @@ export async function POST(req: NextRequest) {
     const isValid = verifyShopifyWebhook(rawBody, hmacHeader, secret);
     if (!isValid) {
       console.error("[Webhook] Invalid HMAC signature");
-      return NextResponse.json(
-        { error: "Invalid signature" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
     // Parse the order data
@@ -111,10 +114,11 @@ export async function POST(req: NextRequest) {
             firstName: order.customer.first_name,
             lastName: order.customer.last_name,
             phone: order.customer.phone,
-            tags: (order.customer.tags as string)
-              ?.split(",")
-              .map((t) => t.trim())
-              .filter(Boolean) || [],
+            tags:
+              (order.customer.tags as string)
+                ?.split(",")
+                .map((t) => t.trim())
+                .filter(Boolean) || [],
           }
         : undefined,
       lineItems: (order.line_items || []).map((li: any) => ({
@@ -133,8 +137,12 @@ export async function POST(req: NextRequest) {
       shippingAddress: order.shipping_address,
       billingAddress: order.billing_address,
       raw: order,
-      processedAt: order.processed_at ? new Date(order.processed_at) : undefined,
-      cancelledAt: order.cancelled_at ? new Date(order.cancelled_at) : undefined,
+      processedAt: order.processed_at
+        ? new Date(order.processed_at)
+        : undefined,
+      cancelledAt: order.cancelled_at
+        ? new Date(order.cancelled_at)
+        : undefined,
       closedAt: order.closed_at ? new Date(order.closed_at) : undefined,
     };
 
@@ -164,6 +172,7 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   return NextResponse.json({
     message: "Shopify Orders Webhook Endpoint",
-    instructions: "Use this URL in your Shopify webhook settings for 'Order creation' events",
+    instructions:
+      "Use this URL in your Shopify webhook settings for 'Order creation' events",
   });
 }

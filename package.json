@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "migrate:fix-statuses": "tsx scripts/fix-order-statuses.ts"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
