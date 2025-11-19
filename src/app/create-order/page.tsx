@@ -82,13 +82,17 @@ export default function Page() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [store, setStore] = useState<Store>(".nl");
+  const [store, setStore] = useState<Store | "">("");
   const [itemCount, setItemCount] = useState(1);
   const [orderDate, setOrderDate] = useState<string>("");
   const [items, setItems] = useState<Partial<OrderItem>[]>([{}]);
   const [errors, setErrors] = useState<Record<number, Record<string, string>>>(
     {}
   );
+  const [formErrors, setFormErrors] = useState<{
+    store?: string;
+    orderDate?: string;
+  }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Calculate delivery date (order date + 3 days)
@@ -122,12 +126,7 @@ export default function Page() {
     if (numValue <= 0) {
       return "Value must be greater than 0";
     }
-    if (numValue > 500) {
-      return "Maximum value is 500cm";
-    }
-    if (numValue < 10) {
-      return "Minimum value is 10cm";
-    }
+
     return "";
   };
 
@@ -208,6 +207,19 @@ export default function Page() {
   };
 
   const handleSubmit = async () => {
+    // Validate form fields (store and order date)
+    const newFormErrors: { store?: string; orderDate?: string } = {};
+
+    if (!store) {
+      newFormErrors.store = "Please select a store";
+    }
+
+    if (!orderDate) {
+      newFormErrors.orderDate = "Order date is required";
+    }
+
+    setFormErrors(newFormErrors);
+
     // Validate all items
     const allErrors: Record<number, Record<string, string>> = {};
     let hasErrors = false;
@@ -222,7 +234,8 @@ export default function Page() {
 
     setErrors(allErrors);
 
-    if (hasErrors) {
+    // Check if there are any form or item errors
+    if (Object.keys(newFormErrors).length > 0 || hasErrors) {
       toast({
         title: "Validation Error",
         description: "Please fix all errors in the form",
@@ -259,7 +272,7 @@ export default function Page() {
       await addOrder({
         orderNumber,
         orderDate: new Date(orderDate),
-        store,
+        store: store as Store,
         items: completeItems,
       });
 
@@ -281,7 +294,7 @@ export default function Page() {
     }
   };
 
-  const options = (storeOptions as any)[store];
+  const options = store ? (storeOptions as any)[store] : storeOptions[".nl"];
 
   if (role !== "Admin") {
     return null;
@@ -310,13 +323,22 @@ export default function Page() {
           <CardContent className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="store">Store</Label>
+                <Label htmlFor="store">Store*</Label>
                 <Select
                   value={store}
-                  onValueChange={(value) => setStore(value as Store)}
+                  onValueChange={(value) => {
+                    setStore(value as Store);
+                    // Clear error when user selects a store
+                    if (formErrors.store) {
+                      setFormErrors((prev) => ({ ...prev, store: undefined }));
+                    }
+                  }}
                 >
-                  <SelectTrigger id="store">
-                    <SelectValue />
+                  <SelectTrigger
+                    id="store"
+                    className={formErrors.store ? "border-red-500" : ""}
+                  >
+                    <SelectValue placeholder="Select store..." />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value=".nl">Netherlands (.nl)</SelectItem>
@@ -326,16 +348,40 @@ export default function Page() {
                     <SelectItem value=".uk">United Kingdom (.uk)</SelectItem>
                   </SelectContent>
                 </Select>
+                {formErrors.store && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {formErrors.store}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="orderDate">Order Date</Label>
+                <Label htmlFor="orderDate">Order Date*</Label>
                 <Input
                   id="orderDate"
                   type="date"
                   value={orderDate}
-                  onChange={(e) => setOrderDate(e.target.value)}
+                  onChange={(e) => {
+                    setOrderDate(e.target.value);
+                    // Clear error when user selects a date
+                    if (formErrors.orderDate) {
+                      setFormErrors((prev) => ({
+                        ...prev,
+                        orderDate: undefined,
+                      }));
+                    }
+                  }}
+                  className={
+                    formErrors.orderDate
+                      ? "border-red-500 focus-visible:ring-red-500"
+                      : ""
+                  }
                 />
+                {formErrors.orderDate && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {formErrors.orderDate}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">

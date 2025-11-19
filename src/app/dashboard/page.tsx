@@ -6,9 +6,15 @@ import DashboardHeader from "@/components/DashboardHeader";
 import OrderFilters, { FilterState } from "@/components/OrderFilters";
 import OrderTable from "@/components/OrderTable";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Order } from "@/types/order";
 import { differenceInDays } from "date-fns";
-import { FileSpreadsheet, FileText, Loader2 } from "lucide-react";
+import { FileSpreadsheet, FileText, Loader2, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   exportAdminToExcel,
@@ -21,6 +27,9 @@ import {
   exportFrameToPDF,
   exportMeshToPDF,
   exportQualityToPDF,
+  exportAllOrdersToPDF,
+  exportFrameCuttingOnlyToPDF,
+  exportMeshCuttingOnlyToPDF,
 } from "@/lib/exportToPDF";
 import { mapOrders } from "@/lib/orderMapper";
 
@@ -158,7 +167,10 @@ export default function Page() {
     setPage(1);
   };
 
-  const handleExport = async (format: "excel" | "pdf") => {
+  const handleExport = async (
+    format: "excel" | "pdf",
+    pdfSection?: "all" | "frame" | "mesh"
+  ) => {
     try {
       // Show loading toast
       toast({
@@ -214,13 +226,31 @@ export default function Page() {
         }
       } else if (format === "pdf") {
         if (role === "Admin") {
-          exportAdminToPDF(mappedOrders);
+          // For Admin, check which section to export
+          if (pdfSection === "all") {
+            exportAllOrdersToPDF(mappedOrders);
+          } else if (pdfSection === "frame") {
+            exportFrameCuttingOnlyToPDF(mappedOrders);
+          } else if (pdfSection === "mesh") {
+            exportMeshCuttingOnlyToPDF(mappedOrders);
+          } else {
+            // Default: export all 3 sections (backward compatibility)
+            exportAdminToPDF(mappedOrders);
+          }
         } else if (role === "Frame Cutting") {
           exportFrameToPDF(mappedOrders);
         } else if (role === "Mesh Cutting") {
           exportMeshToPDF(mappedOrders);
         } else if (role === "Quality") {
-          exportQualityToPDF(mappedOrders);
+          // For Quality, check which section to export
+          if (pdfSection === "frame") {
+            exportFrameCuttingOnlyToPDF(mappedOrders);
+          } else if (pdfSection === "mesh") {
+            exportMeshCuttingOnlyToPDF(mappedOrders);
+          } else {
+            // Default: export both sections (backward compatibility)
+            exportQualityToPDF(mappedOrders);
+          }
         }
       }
 
@@ -275,14 +305,80 @@ export default function Page() {
               <FileSpreadsheet className="h-4 w-4" />
               Export Excel
             </Button>
-            <Button
-              onClick={() => handleExport("pdf")}
-              variant="outline"
-              className="gap-2 hover:cursor-pointer"
-            >
-              <FileText className="h-4 w-4" />
-              Export PDF
-            </Button>
+
+            {/* For Admin: Show dropdown with PDF export options */}
+            {role === "Admin" ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="gap-2 hover:cursor-pointer"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Export PDF
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => handleExport("pdf", "all")}
+                    className="cursor-pointer"
+                  >
+                    All Orders
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleExport("pdf", "frame")}
+                    className="cursor-pointer"
+                  >
+                    Frame Cutting Detail
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleExport("pdf", "mesh")}
+                    className="cursor-pointer"
+                  >
+                    Mesh Cutting Detail
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : role === "Quality" ? (
+              // For Quality: Show dropdown with 2 PDF export options
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="gap-2 hover:cursor-pointer"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Export PDF
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => handleExport("pdf", "frame")}
+                    className="cursor-pointer"
+                  >
+                    Frame Cutting Detail
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleExport("pdf", "mesh")}
+                    className="cursor-pointer"
+                  >
+                    Mesh Cutting Detail
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              // For Frame Cutting and Mesh Cutting roles: Show regular PDF export button
+              <Button
+                onClick={() => handleExport("pdf")}
+                variant="outline"
+                className="gap-2 hover:cursor-pointer"
+              >
+                <FileText className="h-4 w-4" />
+                Export PDF
+              </Button>
+            )}
           </div>
         </div>
 

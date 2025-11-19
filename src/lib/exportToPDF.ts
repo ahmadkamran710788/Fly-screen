@@ -235,3 +235,36 @@ export const exportQualityToPDF = (orders: Order[]) => {
   // Download
   doc.save(`Quality_Export_${new Date().toISOString().split('T')[0]}.pdf`);
 };
+
+// Export for Admin - All Orders Only
+export const exportAllOrdersToPDF = (orders: Order[]) => {
+  const doc = new jsPDF('landscape');
+
+  doc.setFontSize(16);
+  doc.text('All Orders', 14, 15);
+  addAllOrdersTable(doc, orders, 20);
+
+  doc.save(`All_Orders_${new Date().toISOString().split('T')[0]}.pdf`);
+};
+
+// Export for Admin - Frame Cutting Detail Only
+export const exportFrameCuttingOnlyToPDF = (orders: Order[]) => {
+  const doc = new jsPDF('landscape');
+
+  doc.setFontSize(16);
+  doc.text('Frame Cutting Detail', 14, 15);
+  addFrameCuttingTable(doc, orders, 20);
+
+  doc.save(`Frame_Cutting_Detail_${new Date().toISOString().split('T')[0]}.pdf`);
+};
+
+// Export for Admin - Mesh Cutting Detail Only
+export const exportMeshCuttingOnlyToPDF = (orders: Order[]) => {
+  const doc = new jsPDF('landscape');
+
+  doc.setFontSize(16);
+  doc.text('Mesh Cutting Details', 14, 15);
+  addMeshCuttingTable(doc, orders, 20);
+
+  doc.save(`Mesh_Cutting_Detail_${new Date().toISOString().split('T')[0]}.pdf`);
+};

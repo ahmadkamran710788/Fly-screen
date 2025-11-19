@@ -28,12 +28,18 @@ const OrderTable = ({ orders }: OrderTableProps) => {
 
   const getDeadlineStatus = (orderDate: Date) => {
     const deadline = getDeadline(orderDate);
-    // Normalize both dates to midnight for accurate calendar day comparison
+    // Get today's date at start of day for comparison
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    // Get deadline at start of day
     const deadlineNormalized = new Date(deadline);
     deadlineNormalized.setHours(0, 0, 0, 0);
-    const daysLeft = differenceInDays(deadlineNormalized, today);
+
+    // Calculate days left (inclusive of deadline day, exclusive of today)
+    const daysLeft = Math.ceil(
+      (deadlineNormalized.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    );
 
     if (daysLeft < 0) {
       return {
