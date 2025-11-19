@@ -77,6 +77,62 @@ const OrderSchema = new Schema(
   { timestamps: true }
 );
 
+// Middleware to automatically calculate and update order status based on line items
+OrderSchema.pre("save", function (next) {
+  if (this.lineItems && this.lineItems.length > 0) {
+    // Check if all items have qualityStatus === "Packed"
+    const allPacked = this.lineItems.every((item) => item.qualityStatus === "Packed");
+
+    // Check if all items are still pending (all 3 statuses are pending)
+    const allPending = this.lineItems.every(
+      (item) =>
+        item.frameCuttingStatus === "Pending" &&
+        item.meshCuttingStatus === "Pending" &&
+        item.qualityStatus === "Pending"
+    );
+
+    // Update the order status accordingly
+    if (allPacked) {
+      this.status = "Completed";
+    } else if (allPending) {
+      this.status = "Pending";
+    } else {
+      this.status = "In Progress";
+    }
+  }
+  next();
+});
+
+// Also update status on findOneAndUpdate operations
+OrderSchema.pre("findOneAndUpdate", async function (next) {
+  const update = this.getUpdate() as any;
+
+  // Only proceed if lineItems are being updated
+  if (update && update.lineItems && update.lineItems.length > 0) {
+    // Check if all items have qualityStatus === "Packed"
+    const allPacked = update.lineItems.every((item: any) => item.qualityStatus === "Packed");
+
+    // Check if all items are still pending (all 3 statuses are pending)
+    const allPending = update.lineItems.every(
+      (item: any) =>
+        item.frameCuttingStatus === "Pending" &&
+        item.meshCuttingStatus === "Pending" &&
+        item.qualityStatus === "Pending"
+    );
+
+    // Update the order status accordingly
+    if (allPacked) {
+      update.status = "Completed";
+    } else if (allPending) {
+      update.status = "Pending";
+    } else {
+      update.status = "In Progress";
+    }
+  }
+
+  next();
+});
+
 // / Compound indexes for common query patterns
 OrderSchema.index({ createdAt: -1 }); // For sorting by date (descending)
 OrderSchema.index({ status: 1, createdAt: -1 }); // For filtering by status + sorting

@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { OrderModel } from "@/models/Order";
 import crypto from "crypto";
+import { ShopifyOrder, ShopifyLineItem } from "@/types/shopify";
+
+// Centralized store configuration
+const storeConfigs = {
+  nl: { shop: process.env.SHOPIFY_NL_SHOP, secret: process.env.SHOPIFY_NL_SECRET },
+  de: { shop: process.env.SHOPIFY_DE_SHOP, secret: process.env.SHOPIFY_DE_SECRET },
+  uk: { shop: process.env.SHOPIFY_UK_SHOP, secret: process.env.SHOPIFY_UK_SECRET },
+  fr: { shop: process.env.SHOPIFY_FR_SHOP, secret: process.env.SHOPIFY_FR_SECRET },
+  dk: { shop: process.env.SHOPIFY_DK_SHOP, secret: process.env.SHOPIFY_DK_SECRET },
+};
 
 // Shopify webhook signature verification
 function verifyShopifyWebhook(
@@ -9,35 +19,35 @@ function verifyShopifyWebhook(
   hmacHeader: string,
   secret: string
 ): boolean {
-  const hash = crypto
+  const generatedHash = crypto
     .createHmac("sha256", secret)
     .update(body, "utf8")
     .digest("base64");
-  return hash === hmacHeader;
+
+  const hmacBuffer = Buffer.from(hmacHeader);
+  const generatedHashBuffer = Buffer.from(generatedHash);
+
+  // Check lengths match before comparison to prevent errors
+  if (hmacBuffer.length !== generatedHashBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(generatedHashBuffer, hmacBuffer);
 }
 
 // Helper to determine store from shop domain
-function getStoreKeyFromShop(
-  shop: string
-): "nl" | "de" | "uk" | "fr" | "dk" | null {
-  if (shop.includes(process.env.SHOPIFY_NL_SHOP || "")) return "nl";
-  if (shop.includes(process.env.SHOPIFY_DE_SHOP || "")) return "de";
-  if (shop.includes(process.env.SHOPIFY_UK_SHOP || "")) return "uk";
-  if (shop.includes(process.env.SHOPIFY_FR_SHOP || "")) return "fr";
-  if (shop.includes(process.env.SHOPIFY_DK_SHOP || "")) return "dk";
+function getStoreKeyFromShop(shopDomain: string): keyof typeof storeConfigs | null {
+  for (const [key, config] of Object.entries(storeConfigs)) {
+    if (config.shop && shopDomain.includes(config.shop)) {
+      return key as keyof typeof storeConfigs;
+    }
+  }
   return null;
 }
 
 // Helper to get secret for store
-function getSecretForStore(storeKey: "nl" | "de" | "uk" | "fr" | "dk"): string {
-  const secrets = {
-    nl: process.env.SHOPIFY_NL_SECRET,
-    de: process.env.SHOPIFY_DE_SECRET,
-    uk: process.env.SHOPIFY_UK_SECRET,
-    fr: process.env.SHOPIFY_FR_SECRET,
-    dk: process.env.SHOPIFY_DK_SECRET,
-  };
-  return secrets[storeKey] || "";
+function getSecretForStore(storeKey: keyof typeof storeConfigs): string {
+  return storeConfigs[storeKey]?.secret || "";
 }
 
 export async function POST(req: NextRequest) {
@@ -85,7 +95,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Parse the order data
-    const order = JSON.parse(rawBody);
+    const order: ShopifyOrder = JSON.parse(rawBody);
 
     console.log(`[Webhook] Processing order: ${order.name} (${order.id})`);
 
@@ -121,7 +131,7 @@ export async function POST(req: NextRequest) {
                 .filter(Boolean) || [],
           }
         : undefined,
-      lineItems: (order.line_items || []).map((li: any) => ({
+      lineItems: (order.line_items || []).map((li: ShopifyLineItem) => ({
         id: String(li.id),
         productId: li.product_id ? String(li.product_id) : undefined,
         variantId: li.variant_id ? String(li.variant_id) : undefined,
@@ -159,10 +169,11 @@ export async function POST(req: NextRequest) {
       orderId: result._id,
       orderNumber: order.name,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Webhook] Error:", error);
+    const message = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { error: message },
       { status: 500 }
     );
   }
