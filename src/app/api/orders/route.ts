@@ -257,10 +257,14 @@ export async function GET(req: NextRequest) {
 
     // Filter by order date (using processedAt or createdAt as fallback)
     if (orderDate) {
-      const dateStart = new Date(orderDate);
-      dateStart.setHours(0, 0, 0, 0);
-      const dateEnd = new Date(orderDate);
-      dateEnd.setHours(23, 59, 59, 999);
+      console.log('[API] Order Date received:', orderDate);
+      // Create date range covering the entire selected day in UTC
+      // Parse as ISO date string (YYYY-MM-DD) and create Date objects
+      const [year, month, day] = orderDate.split('-').map(Number);
+      console.log('[API] Parsed date:', { year, month, day });
+      const dateStart = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+      const dateEnd = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+      console.log('[API] Date range:', { dateStart, dateEnd });
 
       // Add as $or condition to check both processedAt and createdAt
       andConditions.push({
@@ -278,18 +282,19 @@ export async function GET(req: NextRequest) {
 
     // Filter by delivery date (order date + 3 days)
     if (deliveryDate) {
-      const selectedDeliveryDate = new Date(deliveryDate);
-      selectedDeliveryDate.setHours(0, 0, 0, 0);
+      // Parse delivery date and calculate order date (delivery - 3 days)
+      const [year, month, day] = deliveryDate.split('-').map(Number);
+      const selectedDeliveryDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
 
       // Calculate the order date range that would result in this delivery date
       // If delivery date = order date + 3 days, then order date = delivery date - 3 days
       const orderDateStart = new Date(selectedDeliveryDate);
-      orderDateStart.setDate(orderDateStart.getDate() - 3);
-      orderDateStart.setHours(0, 0, 0, 0);
+      orderDateStart.setUTCDate(orderDateStart.getUTCDate() - 3);
+      orderDateStart.setUTCHours(0, 0, 0, 0);
 
       const orderDateEnd = new Date(selectedDeliveryDate);
-      orderDateEnd.setDate(orderDateEnd.getDate() - 3);
-      orderDateEnd.setHours(23, 59, 59, 999);
+      orderDateEnd.setUTCDate(orderDateEnd.getUTCDate() - 3);
+      orderDateEnd.setUTCHours(23, 59, 59, 999);
 
       // Add as separate condition in $and array
       andConditions.push({
