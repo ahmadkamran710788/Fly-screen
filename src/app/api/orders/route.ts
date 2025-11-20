@@ -223,7 +223,6 @@ export async function GET(req: NextRequest) {
     const stores = searchParams.get("stores");
     const statuses = searchParams.get("statuses");
     const orderDate = searchParams.get("orderDate");
-    console.log("[API] Order Date filter param:", orderDate);
     const deliveryDate = searchParams.get("deliveryDate");
     const deadlineStatus = searchParams.get("deadlineStatus");
 
@@ -258,34 +257,18 @@ export async function GET(req: NextRequest) {
 
     // Filter by order date (using processedAt or createdAt as fallback)
     if (orderDate) {
-      console.log("[API] Order Date received:", orderDate);
-
       // Parse the date string
       const dateParts = orderDate.split("-");
-      if (dateParts.length !== 3) {
-        console.error("[API] Invalid date format:", orderDate);
-      } else {
+      if (dateParts.length === 3) {
         const year = parseInt(dateParts[0]);
         const month = parseInt(dateParts[1]) - 1; // JS months are 0-indexed
         const day = parseInt(dateParts[2]);
 
-        console.log("[API] Parsed date parts:", {
-          year,
-          month: month + 1,
-          day,
-        });
-
         // Create date range for the entire day in GMT+1 timezone
-        // When user selects a date, they're thinking in GMT+1 timezone
-        // We need to query the database for that day in GMT+1
-        // MongoDB stores dates in UTC, so we compare directly with local Date objects
-        const dateStart = new Date(year, month, day, 0, 0, 0, 0);
-        const dateEnd = new Date(year, month, day, 23, 59, 59, 999);
-
-        console.log("[API] Date range (GMT+1 converted to UTC):", {
-          dateStart: dateStart.toISOString(),
-          dateEnd: dateEnd.toISOString(),
-        });
+        // User selects "2025-11-17" which means 2025-11-17 00:00:00 to 23:59:59 in GMT+1
+        // Convert this to UTC: 2025-11-16 23:00:00 UTC to 2025-11-17 22:59:59 UTC
+        const dateStart = new Date(Date.UTC(year, month, day - 1, 23, 0, 0, 0)); // Start of day in GMT+1 = previous day 23:00 UTC
+        const dateEnd = new Date(Date.UTC(year, month, day, 22, 59, 59, 999)); // End of day in GMT+1 = same day 22:59:59 UTC
 
         // Add as $or condition to check both processedAt and createdAt
         andConditions.push({
@@ -421,15 +404,6 @@ export async function GET(req: NextRequest) {
       filterQuery.$and = andConditions;
     }
 
-    console.log(
-      "[API] Final filter query:",
-      JSON.stringify(filterQuery, null, 2)
-    );
-    console.log(
-      "[API] And conditions:",
-      JSON.stringify(andConditions, null, 2)
-    );
-
     // Fetch orders and total count in parallel
     const [orders, totalCount] = await Promise.all([
       OrderModel.find(filterQuery)
@@ -443,18 +417,6 @@ export async function GET(req: NextRequest) {
         .exec(),
       OrderModel.countDocuments(filterQuery),
     ]);
-
-    console.log("[API] Found", orders.length, "orders");
-    if (orders.length > 0) {
-      console.log(
-        "[API] Sample order dates:",
-        orders.slice(0, 3).map((o) => ({
-          name: o.name,
-          processedAt: o.processedAt,
-          createdAt: o.createdAt,
-        }))
-      );
-    }
 
     const totalPages = Math.ceil(totalCount / limit);
 

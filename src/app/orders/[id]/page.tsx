@@ -116,14 +116,20 @@ export default function Page() {
         };
 
         // Map API order to UI-friendly shape
+        // Convert UTC date to GMT+1 for display
+        const utcDate = o.processedAt
+          ? new Date(o.processedAt)
+          : o.createdAt
+          ? new Date(o.createdAt)
+          : new Date();
+
+        // Add 1 hour to convert from UTC to GMT+1
+        const gmt1Date = new Date(utcDate.getTime() + 60 * 60 * 1000);
+
         const mapped = {
           id: String(o._id || o.shopifyId || ""),
           orderNumber: String(o.name || o.shopifyId || "").replace(/^#/, ""),
-          orderDate: o.processedAt
-            ? new Date(o.processedAt)
-            : o.createdAt
-            ? new Date(o.createdAt)
-            : new Date(),
+          orderDate: gmt1Date,
           store: `.${o.storeKey || "nl"}` as any,
           items: (o.lineItems || []).map((li: any, idx: number) => {
             // Try to get properties from lineItem first, then from raw
