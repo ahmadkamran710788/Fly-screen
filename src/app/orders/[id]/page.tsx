@@ -18,7 +18,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ArrowLeft, Trash2, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -36,6 +46,7 @@ export default function Page() {
 
   const [order, setOrder] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleteOrderDialogOpen, setDeleteOrderDialogOpen] = useState(false);
 
   useEffect(() => {
     console.log("role", role);
@@ -442,23 +453,25 @@ export default function Page() {
     }
   };
 
-  const handleDeleteOrder = () => {
-    if (confirm("Are you sure you want to delete this order?")) {
-      fetch(`/api/orders/${params?.id}`, { method: "DELETE" })
-        .then(() => {
-          toast({
-            title: "Order Deleted",
-            description: "The order has been deleted successfully",
-          });
-          router.push("/dashboard");
-        })
-        .catch(() =>
-          toast({
-            title: "Delete failed",
-            description: "Please try again",
-            variant: "destructive",
-          })
-        );
+  const handleDeleteOrderClick = () => {
+    setDeleteOrderDialogOpen(true);
+  };
+
+  const confirmDeleteOrder = async () => {
+    try {
+      await fetch(`/api/orders/${params?.id}`, { method: "DELETE" });
+      toast({
+        title: "Order Deleted",
+        description: "The order has been deleted successfully",
+      });
+      setDeleteOrderDialogOpen(false);
+      router.push("/dashboard");
+    } catch {
+      toast({
+        title: "Delete failed",
+        description: "Please try again",
+        variant: "destructive",
+      });
     }
   };
 
@@ -611,7 +624,7 @@ export default function Page() {
           {role === "Admin" && (
             <Button
               variant="destructive"
-              onClick={handleDeleteOrder}
+              onClick={handleDeleteOrderClick}
               className="gap-2"
             >
               <Trash2 className="h-4 w-4" />
@@ -808,6 +821,44 @@ export default function Page() {
           />
         )}
       </main>
+
+      {/* Delete Order Confirmation Dialog */}
+      <AlertDialog open={deleteOrderDialogOpen} onOpenChange={setDeleteOrderDialogOpen}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
+                <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <AlertDialogTitle className="text-xl">Delete Order?</AlertDialogTitle>
+                <AlertDialogDescription className="mt-1">
+                  This action cannot be undone.
+                </AlertDialogDescription>
+              </div>
+            </div>
+          </AlertDialogHeader>
+
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete order{" "}
+              <span className="font-semibold text-foreground">#{order?.orderNumber}</span>?
+              All associated items and boxes will be permanently removed.
+            </p>
+          </div>
+
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel className="mt-0">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteOrder}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Order
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

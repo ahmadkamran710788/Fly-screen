@@ -13,7 +13,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Package, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, Package, Trash2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface BoxManagementProps {
@@ -36,6 +46,8 @@ const BoxManagement = ({
     onDeleteBox || ((boxId: string) => contextDeleteBox(order.id, boxId));
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [boxToDelete, setBoxToDelete] = useState<{ id: string; name: string } | null>(null);
   const [formData, setFormData] = useState({
     length: "",
     width: "",
@@ -155,13 +167,22 @@ const BoxManagement = ({
     setOpen(false);
   };
 
-  const handleDelete = async (boxId: string) => {
+  const handleDeleteClick = (boxId: string, boxName: string) => {
+    setBoxToDelete({ id: boxId, name: boxName });
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!boxToDelete) return;
+
     try {
-      await deleteBox(boxId);
+      await deleteBox(boxToDelete.id);
       toast({
         title: "Success",
         description: "Box deleted successfully",
       });
+      setDeleteDialogOpen(false);
+      setBoxToDelete(null);
     } catch (error) {
       toast({
         title: "Error",
@@ -415,7 +436,7 @@ const BoxManagement = ({
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => handleDelete(box.id)}
+                      onClick={() => handleDeleteClick(box.id, `Box ${index + 1}`)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -426,6 +447,43 @@ const BoxManagement = ({
           </div>
         )}
       </CardContent>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
+                <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <AlertDialogTitle className="text-xl">Delete Box?</AlertDialogTitle>
+                <AlertDialogDescription className="mt-1">
+                  This action cannot be undone.
+                </AlertDialogDescription>
+              </div>
+            </div>
+          </AlertDialogHeader>
+
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete <span className="font-semibold text-foreground">{boxToDelete?.name}</span>?
+              The items inside will be unassigned and can be added to other boxes.
+            </p>
+          </div>
+
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel className="mt-0">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Box
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

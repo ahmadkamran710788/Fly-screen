@@ -361,8 +361,10 @@ export default function Page() {
                   id="orderDate"
                   type="date"
                   value={orderDate}
+                  min={new Date().toISOString().split("T")[0]}
                   onChange={(e) => {
                     setOrderDate(e.target.value);
+
                     // Clear error when user selects a date
                     if (formErrors.orderDate) {
                       setFormErrors((prev) => ({

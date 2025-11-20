@@ -4,6 +4,10 @@ import { OrderModel } from "@/models/Order";
 import crypto from "crypto";
 import { ShopifyOrder, ShopifyLineItem } from "@/types/shopify";
 
+// Configure route to handle raw body for HMAC verification
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 // Centralized store configuration
 const storeConfigs = {
   nl: { shop: process.env.SHOPIFY_NL_SHOP, secret: process.env.SHOPIFY_NL_SECRET },
@@ -59,6 +63,8 @@ export async function POST(req: NextRequest) {
     const topic = req.headers.get("x-shopify-topic");
 
     console.log(`[Webhook] Received: ${topic} from ${shopDomain}`);
+    console.log(`[Webhook] HMAC Header: ${hmacHeader?.substring(0, 20)}...`);
+    console.log(`[Webhook] Body length: ${rawBody.length}`);
 
     if (!hmacHeader || !shopDomain) {
       console.error("[Webhook] Missing required headers");
@@ -78,6 +84,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log(`[Webhook] Identified store: ${storeKey}`);
+
     // Verify the webhook signature
     const secret = getSecretForStore(storeKey);
     if (!secret) {
@@ -88,11 +96,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log(`[Webhook] Secret found for ${storeKey}: ${secret.substring(0, 10)}...`);
+
     const isValid = verifyShopifyWebhook(rawBody, hmacHeader, secret);
     if (!isValid) {
-      console.error("[Webhook] Invalid HMAC signature");
+      console.error(`[Webhook] Invalid HMAC signature for ${storeKey}`);
+      console.error(`[Webhook] Expected secret length: ${secret.length}`);
+      console.error(`[Webhook] HMAC header length: ${hmacHeader.length}`);
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
+
+    console.log(`[Webhook] HMAC verification successful for ${storeKey}`);
 
     // Parse the order data
     const order: ShopifyOrder = JSON.parse(rawBody);
