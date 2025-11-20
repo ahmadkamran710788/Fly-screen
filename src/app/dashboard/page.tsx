@@ -59,6 +59,7 @@ async function getOrders(
     params.append("statuses", filters.statuses.join(","));
   }
   if (filters?.orderDate) {
+    console.log('[Dashboard] Order Date filter:', filters.orderDate);
     params.append("orderDate", filters.orderDate);
   }
   if (filters?.deliveryDate) {

@@ -185,7 +185,10 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
               type="date"
               className="hover:cursor-pointer"
               value={filters.orderDate}
-              onChange={(e) => updateFilters({ orderDate: e.target.value })}
+              onChange={(e) => {
+                console.log('Order Date selected:', e.target.value);
+                updateFilters({ orderDate: e.target.value });
+              }}
             />
           </div>
 
