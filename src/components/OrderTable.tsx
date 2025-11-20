@@ -63,7 +63,9 @@ const OrderTable = ({ orders }: OrderTableProps) => {
 
   const getOverallStatus = (order: Order) => {
     // Check if all items have qualityStatus === "Packed"
-    const allPacked = order.items?.every((item) => item.qualityStatus === "Packed");
+    const allPacked = order.items?.every(
+      (item) => item.qualityStatus === "Packed"
+    );
 
     // Check if all items are still pending (all 3 statuses are pending)
     const allPending = order.items?.every(
