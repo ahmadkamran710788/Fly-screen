@@ -59,7 +59,6 @@ async function getOrders(
     params.append("statuses", filters.statuses.join(","));
   }
   if (filters?.orderDate) {
-    console.log('[Dashboard] Order Date filter:', filters.orderDate);
     params.append("orderDate", filters.orderDate);
   }
   if (filters?.deliveryDate) {
@@ -115,36 +114,44 @@ export default function Page() {
         setHasPrevPage(data.pagination.hasPrevPage);
         setTotalCount(data.pagination.totalCount);
 
-        const mapped: Order[] = docs.map((o: any, index: number) => ({
-          id:
-            (o?._id &&
-              (typeof o._id === "string" ? o._id : o._id.toString())) ||
-            String(o.shopifyId) ||
-            `order-${index}`,
-          orderNumber: String(o.name || o.shopifyId || "").replace(/^#/, ""),
-          orderDate: o.processedAt
+        const mapped: Order[] = docs.map((o: any, index: number) => {
+          // Convert UTC date to GMT+1 for display
+          const utcDate = o.processedAt
             ? new Date(o.processedAt)
-            : new Date(o.createdAt || Date.now()),
-          store: `.${o.storeKey || "nl"}` as any,
-          items: (o.lineItems || []).map((li: any, idx: number) => ({
-            id: String(li.id || `${o.shopifyId}-${idx + 1}`),
-            width: 0,
-            height: 0,
-            profileColor: "",
-            orientation: "",
-            installationType: "",
-            thresholdType: "",
-            meshType: "",
-            curtainType: "",
-            fabricColor: "",
-            closureType: "",
-            mountingType: "",
-            frameCuttingStatus: li.frameCuttingStatus || "Pending",
-            meshCuttingStatus: li.meshCuttingStatus || "Pending",
-            qualityStatus: li.qualityStatus || "Pending",
-          })),
-          boxes: [],
-        }));
+            : new Date(o.createdAt || Date.now());
+
+          // Add 1 hour to convert from UTC to GMT+1
+          const gmt1Date = new Date(utcDate.getTime() + 60 * 60 * 1000);
+
+          return {
+            id:
+              (o?._id &&
+                (typeof o._id === "string" ? o._id : o._id.toString())) ||
+              String(o.shopifyId) ||
+              `order-${index}`,
+            orderNumber: String(o.name || o.shopifyId || "").replace(/^#/, ""),
+            orderDate: gmt1Date,
+            store: `.${o.storeKey || "nl"}` as any,
+            items: (o.lineItems || []).map((li: any, idx: number) => ({
+              id: String(li.id || `${o.shopifyId}-${idx + 1}`),
+              width: 0,
+              height: 0,
+              profileColor: "",
+              orientation: "",
+              installationType: "",
+              thresholdType: "",
+              meshType: "",
+              curtainType: "",
+              fabricColor: "",
+              closureType: "",
+              mountingType: "",
+              frameCuttingStatus: li.frameCuttingStatus || "Pending",
+              meshCuttingStatus: li.meshCuttingStatus || "Pending",
+              qualityStatus: li.qualityStatus || "Pending",
+            })),
+            boxes: [],
+          };
+        });
 
         setOrders(mapped);
       } catch (error) {

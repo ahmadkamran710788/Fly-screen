@@ -257,34 +257,41 @@ export async function GET(req: NextRequest) {
 
     // Filter by order date (using processedAt or createdAt as fallback)
     if (orderDate) {
-      console.log('[API] Order Date received:', orderDate);
-      // Create date range covering the entire selected day in UTC
-      // Parse as ISO date string (YYYY-MM-DD) and create Date objects
-      const [year, month, day] = orderDate.split('-').map(Number);
-      console.log('[API] Parsed date:', { year, month, day });
-      const dateStart = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-      const dateEnd = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
-      console.log('[API] Date range:', { dateStart, dateEnd });
+      // Parse the date string
+      const dateParts = orderDate.split("-");
+      if (dateParts.length === 3) {
+        const year = parseInt(dateParts[0]);
+        const month = parseInt(dateParts[1]) - 1; // JS months are 0-indexed
+        const day = parseInt(dateParts[2]);
 
-      // Add as $or condition to check both processedAt and createdAt
-      andConditions.push({
-        $or: [
-          { processedAt: { $gte: dateStart, $lte: dateEnd } },
-          {
-            $and: [
-              { processedAt: { $exists: false } },
-              { createdAt: { $gte: dateStart, $lte: dateEnd } },
-            ],
-          },
-        ],
-      });
+        // Create date range for the entire day in GMT+1 timezone
+        // User selects "2025-11-17" which means 2025-11-17 00:00:00 to 23:59:59 in GMT+1
+        // Convert this to UTC: 2025-11-16 23:00:00 UTC to 2025-11-17 22:59:59 UTC
+        const dateStart = new Date(Date.UTC(year, month, day - 1, 23, 0, 0, 0)); // Start of day in GMT+1 = previous day 23:00 UTC
+        const dateEnd = new Date(Date.UTC(year, month, day, 22, 59, 59, 999)); // End of day in GMT+1 = same day 22:59:59 UTC
+
+        // Add as $or condition to check both processedAt and createdAt
+        andConditions.push({
+          $or: [
+            { processedAt: { $gte: dateStart, $lte: dateEnd } },
+            {
+              $and: [
+                { processedAt: { $exists: false } },
+                { createdAt: { $gte: dateStart, $lte: dateEnd } },
+              ],
+            },
+          ],
+        });
+      }
     }
 
     // Filter by delivery date (order date + 3 days)
     if (deliveryDate) {
       // Parse delivery date and calculate order date (delivery - 3 days)
-      const [year, month, day] = deliveryDate.split('-').map(Number);
-      const selectedDeliveryDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+      const [year, month, day] = deliveryDate.split("-").map(Number);
+      const selectedDeliveryDate = new Date(
+        Date.UTC(year, month - 1, day, 0, 0, 0, 0)
+      );
 
       // Calculate the order date range that would result in this delivery date
       // If delivery date = order date + 3 days, then order date = delivery date - 3 days
@@ -345,7 +352,10 @@ export async function GET(req: NextRequest) {
           andConditions.push({
             $or: [
               {
-                processedAt: { $gte: todayDeadlineStart, $lte: todayDeadlineEnd },
+                processedAt: {
+                  $gte: todayDeadlineStart,
+                  $lte: todayDeadlineEnd,
+                },
               },
               {
                 $and: [
