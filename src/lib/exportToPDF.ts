@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Order, OrderItem, Store } from '@/types/order';
 import { mapToTurkish, extractColorCode } from './mappings';
+import { formatDateGMT1 } from './timezone';
 
 // Calculate overall status of an order
 const getOverallStatus = (order: Order): string => {
@@ -53,7 +54,7 @@ const addAllOrdersTable = (doc: jsPDF, orders: Order[], startY: number = 20) => 
     order.items.forEach((item) => {
       tableData.push([
         order.orderNumber,
-        order.orderDate.toLocaleDateString(),
+        formatDateGMT1(order.orderDate),
         order.store,
         item.id,
         item.width,

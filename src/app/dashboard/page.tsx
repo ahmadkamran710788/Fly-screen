@@ -115,13 +115,10 @@ export default function Page() {
         setTotalCount(data.pagination.totalCount);
 
         const mapped: Order[] = docs.map((o: any, index: number) => {
-          // Convert UTC date to GMT+1 for display
+          // Keep the date in UTC - formatting functions will handle GMT+1 conversion
           const utcDate = o.processedAt
             ? new Date(o.processedAt)
             : new Date(o.createdAt || Date.now());
-
-          // Add 1 hour to convert from UTC to GMT+1
-          const gmt1Date = new Date(utcDate.getTime() + 60 * 60 * 1000);
 
           return {
             id:
@@ -130,7 +127,7 @@ export default function Page() {
               String(o.shopifyId) ||
               `order-${index}`,
             orderNumber: String(o.name || o.shopifyId || "").replace(/^#/, ""),
-            orderDate: gmt1Date,
+            orderDate: utcDate,
             store: `.${o.storeKey || "nl"}` as any,
             items: (o.lineItems || []).map((li: any, idx: number) => ({
               id: String(li.id || `${o.shopifyId}-${idx + 1}`),

@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { Order, OrderItem, Store } from '@/types/order';
 import { mapToTurkish, extractColorCode } from './mappings';
+import { formatDateGMT1 } from './timezone';
 
 // Calculate overall status of an order
 const getOverallStatus = (order: Order): string => {
@@ -67,7 +68,7 @@ const createAllOrdersSheet = (orders: Order[]) => {
     order.items.forEach((item) => {
       data.push([
         order.orderNumber,
-        order.orderDate.toLocaleDateString(),
+        formatDateGMT1(order.orderDate),
         order.store,
         item.id,
         item.width,
