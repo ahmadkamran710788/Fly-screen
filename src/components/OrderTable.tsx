@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Order } from "@/types/order";
-import { format, differenceInDays } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,6 +17,16 @@ import { Eye } from "lucide-react";
 interface OrderTableProps {
   orders: Order[];
 }
+
+// Format date in GMT+1 timezone (dd/MM/yyyy format)
+const formatDateGMT1 = (date: Date): string => {
+  // Date is already in GMT+1 from the dashboard mapping
+  // Just format it as dd/MM/yyyy
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
 
 const OrderTable = ({ orders }: OrderTableProps) => {
   const getDeadline = (orderDate: Date) => {
@@ -123,8 +132,8 @@ const OrderTable = ({ orders }: OrderTableProps) => {
                   <TableCell className="font-medium">
                     {order.orderNumber}
                   </TableCell>
-                  <TableCell>{format(orderDate, "dd/MM/yyyy")}</TableCell>
-                  <TableCell>{format(deliveryDate, "dd/MM/yyyy")}</TableCell>
+                  <TableCell>{formatDateGMT1(orderDate)}</TableCell>
+                  <TableCell>{formatDateGMT1(deliveryDate)}</TableCell>
                   <TableCell>
                     <Badge variant="outline">
                       {order.store || (order as any).storeKey}
