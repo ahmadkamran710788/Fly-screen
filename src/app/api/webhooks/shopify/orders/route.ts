@@ -10,11 +10,26 @@ export const dynamic = "force-dynamic";
 
 // Centralized store configuration
 const storeConfigs = {
-  nl: { shop: process.env.SHOPIFY_NL_SHOP, secret: process.env.SHOPIFY_NL_SECRET },
-  de: { shop: process.env.SHOPIFY_DE_SHOP, secret: process.env.SHOPIFY_DE_SECRET },
-  uk: { shop: process.env.SHOPIFY_UK_SHOP, secret: process.env.SHOPIFY_UK_SECRET },
-  fr: { shop: process.env.SHOPIFY_FR_SHOP, secret: process.env.SHOPIFY_FR_SECRET },
-  dk: { shop: process.env.SHOPIFY_DK_SHOP, secret: process.env.SHOPIFY_DK_SECRET },
+  nl: {
+    shop: process.env.SHOPIFY_NL_SHOP,
+    secret: process.env.SHOPIFY_NL_SECRET,
+  },
+  de: {
+    shop: process.env.SHOPIFY_DE_SHOP,
+    secret: process.env.SHOPIFY_DE_SECRET,
+  },
+  uk: {
+    shop: process.env.SHOPIFY_UK_SHOP,
+    secret: process.env.SHOPIFY_UK_SECRET,
+  },
+  fr: {
+    shop: process.env.SHOPIFY_FR_SHOP,
+    secret: process.env.SHOPIFY_FR_SECRET,
+  },
+  dk: {
+    shop: process.env.SHOPIFY_DK_SHOP,
+    secret: process.env.SHOPIFY_DK_SECRET,
+  },
 };
 
 // Shopify webhook signature verification
@@ -28,8 +43,8 @@ function verifyShopifyWebhook(
     .update(body, "utf8")
     .digest("base64");
 
-  const hmacBuffer = Buffer.from(hmacHeader);
-  const generatedHashBuffer = Buffer.from(generatedHash);
+  const hmacBuffer = Buffer.from(hmacHeader, "base64");
+  const generatedHashBuffer = Buffer.from(generatedHash, "base64");
 
   // Check lengths match before comparison to prevent errors
   if (hmacBuffer.length !== generatedHashBuffer.length) {
@@ -40,7 +55,9 @@ function verifyShopifyWebhook(
 }
 
 // Helper to determine store from shop domain
-function getStoreKeyFromShop(shopDomain: string): keyof typeof storeConfigs | null {
+function getStoreKeyFromShop(
+  shopDomain: string
+): keyof typeof storeConfigs | null {
   for (const [key, config] of Object.entries(storeConfigs)) {
     if (config.shop && shopDomain.includes(config.shop)) {
       return key as keyof typeof storeConfigs;
@@ -96,7 +113,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log(`[Webhook] Secret found for ${storeKey}: ${secret.substring(0, 10)}...`);
+    console.log(
+      `[Webhook] Secret found for ${storeKey}: ${secret.substring(0, 10)}...`
+    );
 
     const isValid = verifyShopifyWebhook(rawBody, hmacHeader, secret);
     if (!isValid) {
@@ -185,11 +204,9 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: unknown) {
     console.error("[Webhook] Error:", error);
-    const message = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json(
-      { error: message },
-      { status: 500 }
-    );
+    const message =
+      error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
