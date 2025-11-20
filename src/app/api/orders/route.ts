@@ -223,6 +223,7 @@ export async function GET(req: NextRequest) {
     const stores = searchParams.get("stores");
     const statuses = searchParams.get("statuses");
     const orderDate = searchParams.get("orderDate");
+    console.log("[API] Order Date filter param:", orderDate);
     const deliveryDate = searchParams.get("deliveryDate");
     const deadlineStatus = searchParams.get("deadlineStatus");
 
@@ -257,34 +258,57 @@ export async function GET(req: NextRequest) {
 
     // Filter by order date (using processedAt or createdAt as fallback)
     if (orderDate) {
-      console.log('[API] Order Date received:', orderDate);
-      // Create date range covering the entire selected day in UTC
-      // Parse as ISO date string (YYYY-MM-DD) and create Date objects
-      const [year, month, day] = orderDate.split('-').map(Number);
-      console.log('[API] Parsed date:', { year, month, day });
-      const dateStart = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-      const dateEnd = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
-      console.log('[API] Date range:', { dateStart, dateEnd });
+      console.log("[API] Order Date received:", orderDate);
 
-      // Add as $or condition to check both processedAt and createdAt
-      andConditions.push({
-        $or: [
-          { processedAt: { $gte: dateStart, $lte: dateEnd } },
-          {
-            $and: [
-              { processedAt: { $exists: false } },
-              { createdAt: { $gte: dateStart, $lte: dateEnd } },
-            ],
-          },
-        ],
-      });
+      // Parse the date string
+      const dateParts = orderDate.split("-");
+      if (dateParts.length !== 3) {
+        console.error("[API] Invalid date format:", orderDate);
+      } else {
+        const year = parseInt(dateParts[0]);
+        const month = parseInt(dateParts[1]) - 1; // JS months are 0-indexed
+        const day = parseInt(dateParts[2]);
+
+        console.log("[API] Parsed date parts:", {
+          year,
+          month: month + 1,
+          day,
+        });
+
+        // Create date range for the entire day in GMT+1 timezone
+        // When user selects a date, they're thinking in GMT+1 timezone
+        // We need to query the database for that day in GMT+1
+        // MongoDB stores dates in UTC, so we compare directly with local Date objects
+        const dateStart = new Date(year, month, day, 0, 0, 0, 0);
+        const dateEnd = new Date(year, month, day, 23, 59, 59, 999);
+
+        console.log("[API] Date range (GMT+1 converted to UTC):", {
+          dateStart: dateStart.toISOString(),
+          dateEnd: dateEnd.toISOString(),
+        });
+
+        // Add as $or condition to check both processedAt and createdAt
+        andConditions.push({
+          $or: [
+            { processedAt: { $gte: dateStart, $lte: dateEnd } },
+            {
+              $and: [
+                { processedAt: { $exists: false } },
+                { createdAt: { $gte: dateStart, $lte: dateEnd } },
+              ],
+            },
+          ],
+        });
+      }
     }
 
     // Filter by delivery date (order date + 3 days)
     if (deliveryDate) {
       // Parse delivery date and calculate order date (delivery - 3 days)
-      const [year, month, day] = deliveryDate.split('-').map(Number);
-      const selectedDeliveryDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+      const [year, month, day] = deliveryDate.split("-").map(Number);
+      const selectedDeliveryDate = new Date(
+        Date.UTC(year, month - 1, day, 0, 0, 0, 0)
+      );
 
       // Calculate the order date range that would result in this delivery date
       // If delivery date = order date + 3 days, then order date = delivery date - 3 days
@@ -345,7 +369,10 @@ export async function GET(req: NextRequest) {
           andConditions.push({
             $or: [
               {
-                processedAt: { $gte: todayDeadlineStart, $lte: todayDeadlineEnd },
+                processedAt: {
+                  $gte: todayDeadlineStart,
+                  $lte: todayDeadlineEnd,
+                },
               },
               {
                 $and: [
@@ -394,6 +421,15 @@ export async function GET(req: NextRequest) {
       filterQuery.$and = andConditions;
     }
 
+    console.log(
+      "[API] Final filter query:",
+      JSON.stringify(filterQuery, null, 2)
+    );
+    console.log(
+      "[API] And conditions:",
+      JSON.stringify(andConditions, null, 2)
+    );
+
     // Fetch orders and total count in parallel
     const [orders, totalCount] = await Promise.all([
       OrderModel.find(filterQuery)
@@ -407,6 +443,18 @@ export async function GET(req: NextRequest) {
         .exec(),
       OrderModel.countDocuments(filterQuery),
     ]);
+
+    console.log("[API] Found", orders.length, "orders");
+    if (orders.length > 0) {
+      console.log(
+        "[API] Sample order dates:",
+        orders.slice(0, 3).map((o) => ({
+          name: o.name,
+          processedAt: o.processedAt,
+          createdAt: o.createdAt,
+        }))
+      );
+    }
 
     const totalPages = Math.ceil(totalCount / limit);
 
