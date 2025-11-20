@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { OrderModel } from "@/models/Order";
 import { requireAuth } from "@/lib/auth-helper";
+import { getDayRangeInUTC } from "@/lib/timezone";
 
 export async function POST(req: NextRequest) {
   try {
@@ -257,18 +258,11 @@ export async function GET(req: NextRequest) {
 
     // Filter by order date (using processedAt or createdAt as fallback)
     if (orderDate) {
-      // Parse the date string
-      const dateParts = orderDate.split("-");
-      if (dateParts.length === 3) {
-        const year = parseInt(dateParts[0]);
-        const month = parseInt(dateParts[1]) - 1; // JS months are 0-indexed
-        const day = parseInt(dateParts[2]);
+      // Use centralized timezone utility to get UTC range for GMT+1 day
+      const dayRange = getDayRangeInUTC(orderDate);
 
-        // Create date range for the entire day in GMT+1 timezone
-        // User selects "2025-11-17" which means 2025-11-17 00:00:00 to 23:59:59 in GMT+1
-        // Convert this to UTC: 2025-11-16 23:00:00 UTC to 2025-11-17 22:59:59 UTC
-        const dateStart = new Date(Date.UTC(year, month, day - 1, 23, 0, 0, 0)); // Start of day in GMT+1 = previous day 23:00 UTC
-        const dateEnd = new Date(Date.UTC(year, month, day, 22, 59, 59, 999)); // End of day in GMT+1 = same day 22:59:59 UTC
+      if (dayRange) {
+        const { start: dateStart, end: dateEnd } = dayRange;
 
         // Add as $or condition to check both processedAt and createdAt
         andConditions.push({
@@ -287,34 +281,37 @@ export async function GET(req: NextRequest) {
 
     // Filter by delivery date (order date + 3 days)
     if (deliveryDate) {
-      // Parse delivery date and calculate order date (delivery - 3 days)
+      // User selects delivery date in GMT+1
+      // Calculate the order date (delivery - 3 days) and get UTC range
       const [year, month, day] = deliveryDate.split("-").map(Number);
-      const selectedDeliveryDate = new Date(
-        Date.UTC(year, month - 1, day, 0, 0, 0, 0)
-      );
 
-      // Calculate the order date range that would result in this delivery date
-      // If delivery date = order date + 3 days, then order date = delivery date - 3 days
-      const orderDateStart = new Date(selectedDeliveryDate);
-      orderDateStart.setUTCDate(orderDateStart.getUTCDate() - 3);
-      orderDateStart.setUTCHours(0, 0, 0, 0);
+      // Calculate order date (3 days before delivery)
+      const orderDateObj = new Date(year, month - 1, day);
+      orderDateObj.setDate(orderDateObj.getDate() - 3);
 
-      const orderDateEnd = new Date(selectedDeliveryDate);
-      orderDateEnd.setUTCDate(orderDateEnd.getUTCDate() - 3);
-      orderDateEnd.setUTCHours(23, 59, 59, 999);
+      // Format as YYYY-MM-DD to use with getDayRangeInUTC
+      const orderDateString = `${orderDateObj.getFullYear()}-${String(
+        orderDateObj.getMonth() + 1
+      ).padStart(2, "0")}-${String(orderDateObj.getDate()).padStart(2, "0")}`;
 
-      // Add as separate condition in $and array
-      andConditions.push({
-        $or: [
-          { processedAt: { $gte: orderDateStart, $lte: orderDateEnd } },
-          {
-            $and: [
-              { processedAt: { $exists: false } },
-              { createdAt: { $gte: orderDateStart, $lte: orderDateEnd } },
-            ],
-          },
-        ],
-      });
+      const dayRange = getDayRangeInUTC(orderDateString);
+
+      if (dayRange) {
+        const { start: orderDateStart, end: orderDateEnd } = dayRange;
+
+        // Add as separate condition in $and array
+        andConditions.push({
+          $or: [
+            { processedAt: { $gte: orderDateStart, $lte: orderDateEnd } },
+            {
+              $and: [
+                { processedAt: { $exists: false } },
+                { createdAt: { $gte: orderDateStart, $lte: orderDateEnd } },
+              ],
+            },
+          ],
+        });
+      }
     }
 
     // Filter by deadline status (calculated based on processedAt or createdAt + 3 days)

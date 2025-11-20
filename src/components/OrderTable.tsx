@@ -13,20 +13,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Eye } from "lucide-react";
+import { formatDateGMT1 } from "@/lib/timezone";
 
 interface OrderTableProps {
   orders: Order[];
 }
 
-// Format date in GMT+1 timezone (dd/MM/yyyy format)
-const formatDateGMT1 = (date: Date): string => {
-  // Date is already in GMT+1 from the dashboard mapping
-  // Just format it as dd/MM/yyyy
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
-  return `${day}/${month}/${year}`;
-};
+// Using centralized formatDateGMT1 from timezone utility
+// Date is already in GMT+1 from the dashboard mapping (isAlreadyGMT1 = true)
 
 const OrderTable = ({ orders }: OrderTableProps) => {
   const getDeadline = (orderDate: Date) => {
