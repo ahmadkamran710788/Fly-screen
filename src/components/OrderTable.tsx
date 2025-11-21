@@ -79,7 +79,7 @@ const OrderTable = ({ orders }: OrderTableProps) => {
       };
     } else {
       return {
-        text: `Upcomming ${totalDays} day${totalDays !== 1 ? "s" : ""}`,
+        text: `Upcoming ${totalDays} day${totalDays !== 1 ? "s" : ""}`,
         variant: "secondary" as const,
       };
     }
