@@ -36,20 +36,33 @@ const OrderTable = ({ orders }: OrderTableProps) => {
     const orderDay = orderDate.getUTCDate();
 
     // Create order date at UTC midnight
-    const orderDateOnly = new Date(Date.UTC(orderYear, orderMonth, orderDay, 0, 0, 0, 0));
+    const orderDateOnly = new Date(
+      Date.UTC(orderYear, orderMonth, orderDay, 0, 0, 0, 0)
+    );
 
     // Calculate delivery date (order date + 3 days) at UTC midnight
-    const deliveryDateOnly = new Date(Date.UTC(orderYear, orderMonth, orderDay + 3, 0, 0, 0, 0));
+    const deliveryDateOnly = new Date(
+      Date.UTC(orderYear, orderMonth, orderDay + 3, 0, 0, 0, 0)
+    );
 
     // Calculate the difference between delivery and order date (always 3 days)
-    const totalDays = Math.round(
-      (deliveryDateOnly.getTime() - orderDateOnly.getTime()) / (1000 * 60 * 60 * 24)
-    );
 
     // Get today in UTC at midnight
     const now = new Date();
-    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
-
+    const today = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        0,
+        0,
+        0,
+        0
+      )
+    );
+    const totalDays = Math.round(
+      (deliveryDateOnly.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    );
     // Check status based on today
     if (deliveryDateOnly.getTime() < today.getTime()) {
       const daysOverdue = Math.round(
