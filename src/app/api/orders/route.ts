@@ -238,17 +238,26 @@ export async function GET(req: NextRequest) {
     const andConditions: any[] = [];
 
     // Filter by order number (search in name field)
+    // Only match the order number itself, not store names or other fields
     if (orderNumber) {
-      filterQuery.name = { $regex: orderNumber, $options: "i" };
+      console.log("🔍 Searching by order number:", orderNumber);
+      // Escape special regex characters and match only the number part
+      const escapedOrderNumber = orderNumber.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // Match orders that have the exact order number (case insensitive)
+      // The name field typically looks like "#12345" so we match against the number part
+      filterQuery.name = { $regex: `#${escapedOrderNumber}`, $options: "i" };
     }
 
     // Filter by stores (storeKey without the dot prefix)
     if (stores) {
+      console.log("🏪 Filtering by stores:", stores);
       const storeArray = stores
         .split(",")
         .map((s) => s.trim().replace(/^\./, ""));
       filterQuery.storeKey = { $in: storeArray };
     }
+
+    console.log("📊 Final filter query:", JSON.stringify(filterQuery, null, 2));
 
     // Filter by statuses
     if (statuses) {

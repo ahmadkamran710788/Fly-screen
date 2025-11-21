@@ -47,7 +47,10 @@ const BoxManagement = ({
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [boxToDelete, setBoxToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [boxToDelete, setBoxToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [formData, setFormData] = useState({
     length: "",
     width: "",
@@ -223,11 +226,36 @@ const BoxManagement = ({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>Package Information</span>
-          <Dialog open={open} onOpenChange={setOpen}>
+    <>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Delete {boxToDelete?.name}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the box
+              and its contents from this order.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Package Information</span>
+            <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2">
                 <Plus className="h-4 w-4" />
@@ -436,7 +464,9 @@ const BoxManagement = ({
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => handleDeleteClick(box.id, `Box ${index + 1}`)}
+                      onClick={() =>
+                        handleDeleteClick(box.id, `Box ${index + 1}`)
+                      }
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -447,44 +477,8 @@ const BoxManagement = ({
           </div>
         )}
       </CardContent>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="sm:max-w-md">
-          <AlertDialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
-                <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
-              </div>
-              <div>
-                <AlertDialogTitle className="text-xl">Delete Box?</AlertDialogTitle>
-                <AlertDialogDescription className="mt-1">
-                  This action cannot be undone.
-                </AlertDialogDescription>
-              </div>
-            </div>
-          </AlertDialogHeader>
-
-          <div className="py-4">
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete <span className="font-semibold text-foreground">{boxToDelete?.name}</span>?
-              The items inside will be unassigned and can be added to other boxes.
-            </p>
-          </div>
-
-          <AlertDialogFooter className="gap-2 sm:gap-0">
-            <AlertDialogCancel className="mt-0">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete Box
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Card>
+    </>
   );
 };
 

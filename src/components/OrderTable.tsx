@@ -30,35 +30,43 @@ const OrderTable = ({ orders }: OrderTableProps) => {
   };
 
   const getDeadlineStatus = (orderDate: Date) => {
-    const deadline = getDeadline(orderDate);
-    // Get today's date at start of day for comparison
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use UTC to avoid timezone issues - extract date parts in UTC
+    const orderYear = orderDate.getUTCFullYear();
+    const orderMonth = orderDate.getUTCMonth();
+    const orderDay = orderDate.getUTCDate();
 
-    // Get deadline at start of day
-    const deadlineNormalized = new Date(deadline);
-    deadlineNormalized.setHours(0, 0, 0, 0);
+    // Create order date at UTC midnight
+    const orderDateOnly = new Date(Date.UTC(orderYear, orderMonth, orderDay, 0, 0, 0, 0));
 
-    // Calculate days left (inclusive of deadline day, exclusive of today)
-    const daysLeft = Math.ceil(
-      (deadlineNormalized.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    // Calculate delivery date (order date + 3 days) at UTC midnight
+    const deliveryDateOnly = new Date(Date.UTC(orderYear, orderMonth, orderDay + 3, 0, 0, 0, 0));
+
+    // Calculate the difference between delivery and order date (always 3 days)
+    const totalDays = Math.round(
+      (deliveryDateOnly.getTime() - orderDateOnly.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    if (daysLeft < 0) {
+    // Get today in UTC at midnight
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+
+    // Check status based on today
+    if (deliveryDateOnly.getTime() < today.getTime()) {
+      const daysOverdue = Math.round(
+        (today.getTime() - deliveryDateOnly.getTime()) / (1000 * 60 * 60 * 24)
+      );
       return {
-        text: `Overdue by ${Math.abs(daysLeft)} day${
-          Math.abs(daysLeft) !== 1 ? "s" : ""
-        }`,
+        text: `Overdue by ${daysOverdue} day${daysOverdue !== 1 ? "s" : ""}`,
         variant: "destructive" as const,
       };
-    } else if (daysLeft === 0) {
+    } else if (deliveryDateOnly.getTime() === today.getTime()) {
       return {
         text: "Due today",
         variant: "outline" as const,
       };
     } else {
       return {
-        text: `${daysLeft} day${daysLeft !== 1 ? "s" : ""} left`,
+        text: `${totalDays} day${totalDays !== 1 ? "s" : ""}`,
         variant: "secondary" as const,
       };
     }

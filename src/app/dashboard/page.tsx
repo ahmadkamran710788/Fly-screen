@@ -52,7 +52,8 @@ async function getOrders(
   if (filters?.orderNumber) {
     params.append("orderNumber", filters.orderNumber);
   }
-  if (filters?.stores && filters.stores.length > 0) {
+  // Only apply store filter if not searching by order number
+  if (filters?.stores && filters.stores.length > 0 && !filters?.orderNumber) {
     params.append("stores", filters.stores.join(","));
   }
   if (filters?.statuses && filters.statuses.length > 0) {
