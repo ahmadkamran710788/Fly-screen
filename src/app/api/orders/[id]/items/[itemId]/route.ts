@@ -3,6 +3,12 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { OrderModel } from "@/models/Order";
 import { requireAuth } from "@/lib/auth-helper";
 import { broadcastOrderUpdate } from "../../subscribe/route";
+import { revalidatePath } from "next/cache";
+
+// Force dynamic rendering for serverless
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 10;
 
 // Helper function to calculate overall order status from all items
 function calculateOrderStatus(
@@ -129,6 +135,14 @@ export async function PATCH(
       orderStatus: order.status,
       timestamp: new Date().toISOString(),
     });
+
+    // Revalidate orders listing and detail pages to ensure fresh data
+    try {
+      revalidatePath("/api/orders");
+      revalidatePath(`/api/orders/${id}`);
+    } catch (error) {
+      console.warn("⚠️ Revalidation warning (non-critical):", error);
+    }
 
     return NextResponse.json({
       success: true,
