@@ -12,23 +12,23 @@ export const dynamic = "force-dynamic";
 const storeConfigs = {
   nl: {
     shop: process.env.SHOPIFY_NL_SHOP,
-    secret: process.env.SHOPIFY_NL_SECRET,
+    secret: process.env.SHOPIFY_NL_WEBHOK_SECRET,
   },
   de: {
     shop: process.env.SHOPIFY_DE_SHOP,
-    secret: process.env.SHOPIFY_DE_SECRET,
+    secret: process.env.SHOPIFY_DE_WEBHOK_SECRET,
   },
   uk: {
     shop: process.env.SHOPIFY_UK_SHOP,
-    secret: process.env.SHOPIFY_UK_SECRET,
+    secret: process.env.SHOPIFY_UK_WEBHOK_SECRET,
   },
   fr: {
     shop: process.env.SHOPIFY_FR_SHOP,
-    secret: process.env.SHOPIFY_FR_SECRET,
+    secret: process.env.SHOPIFY_FR_WEBHOK_SECRET,
   },
   dk: {
     shop: process.env.SHOPIFY_DK_SHOP,
-    secret: process.env.SHOPIFY_DK_SECRET,
+    secret: process.env.SHOPIFY_DK_WEBHOK_SECRET,
   },
 };
 
