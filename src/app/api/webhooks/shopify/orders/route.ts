@@ -210,10 +210,10 @@ function getSecretForStore(storeKey: keyof typeof storeConfigs): string {
 //   }
 // }
 
-///CHANGES
 export async function POST(req: NextRequest) {
   try {
     // Get the raw body for HMAC verification
+    // IMPORTANT: req.text() must be called before any other body parsing
     const rawBody = await req.text();
     const hmacHeader = req.headers.get("x-shopify-hmac-sha256");
     const shopDomain = req.headers.get("x-shopify-shop-domain");
@@ -266,13 +266,13 @@ export async function POST(req: NextRequest) {
     );
     console.log(`[Webhook] Secret length: ${secret.length}`);
 
-    // Try verification with the secret
+    // Verify HMAC
     const isValid = verifyShopifyWebhook(rawBody, hmacHeader, secret);
 
     if (!isValid) {
       console.error(`[Webhook] ❌ HMAC verification FAILED for ${storeKey}`);
 
-      // Generate what we expected
+      // Generate what we expected for debugging
       const expectedHash = crypto
         .createHmac("sha256", secret)
         .update(rawBody, "utf8")
@@ -286,12 +286,10 @@ export async function POST(req: NextRequest) {
       );
       console.error(`[Webhook] Hashes match: ${expectedHash === hmacHeader}`);
 
-      // TEMPORARY: Accept webhook anyway for debugging
-      console.warn(`[Webhook] ⚠️ Processing anyway for debugging purposes`);
-      // return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-    } else {
-      console.log(`[Webhook] ✅ HMAC verification successful for ${storeKey}`);
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
+
+    console.log(`[Webhook] ✅ HMAC verification successful for ${storeKey}`);
 
     // Parse the order data
     const order: ShopifyOrder = JSON.parse(rawBody);
