@@ -41,12 +41,12 @@ const OrderSchema = new Schema(
         // Three separate statuses per item
         frameCuttingStatus: {
           type: String,
-          enum: ["Pending", "Ready to Package"],
+          enum: ["Pending", "Complete"],
           default: "Pending",
         },
         meshCuttingStatus: {
           type: String,
-          enum: ["Pending", "Ready to Package"],
+          enum: ["Pending", "Complete"],
           default: "Pending",
         },
         qualityStatus: {

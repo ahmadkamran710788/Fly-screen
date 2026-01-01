@@ -10,14 +10,26 @@ interface SawingViewProps {
 }
 
 const SawingView = ({ item, store, itemNumber }: SawingViewProps) => {
+  const yon = mapToTurkish(item.orientation, store, 'orientation');
+  const isDikey = yon === 'Dikey' || yon === 'DIKEY';
+  const esik = mapToTurkish(item.thresholdType, store, 'threshold');
+  const isFlat = esik === '9 mm'; // Flat threshold maps to '9 mm' in Turkish
+  
+  // If YON = DIKEY, switch En with Boy
+  // If thresholdType is Flat:
+  // - Add separate value: Width - 3.4 cm (not linked to En/Boy)
+  // - Kanat = Height - 4.9 cm
+  // Otherwise (Standard):
+  // - Kanat = Height - 7.7 cm
   const calculations = {
-    en: item.width - 5,
-    boy: item.height - 5,
-    kanat: item.height - 5.5,
+    en: isDikey ? item.height - 7 : item.width - 7,
+    boy: isDikey ? item.width - 7 : item.height - 7,
+    kanat: isFlat ? item.height - 4.9 : item.height - 7.7,
+    flatValue: isFlat ? item.width - 3.4 : null, // Width - 3.4 cm when Flat
     profilRenk: extractColorCode(item.profileColor),
-    yon: mapToTurkish(item.orientation, store, 'orientation'),
+    yon: yon,
     kurulum: mapToTurkish(item.installationType, store, 'installation'),
-    esik: mapToTurkish(item.thresholdType, store, 'threshold'),
+    esik: esik,
   };
 
   return (
@@ -25,7 +37,7 @@ const SawingView = ({ item, store, itemNumber }: SawingViewProps) => {
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>Item {itemNumber} - Sawing (Frame Cutting)</span>
-          <Badge variant={item.frameCuttingStatus === 'Ready to Package' ? 'default' : 'secondary'}>
+          <Badge variant={item.frameCuttingStatus === 'Complete' ? 'default' : 'secondary'}>
             {item.frameCuttingStatus}
           </Badge>
         </CardTitle>
@@ -35,18 +47,31 @@ const SawingView = ({ item, store, itemNumber }: SawingViewProps) => {
           <div>
             <p className="text-sm text-muted-foreground">En</p>
             <p className="text-lg font-semibold">{calculations.en} cm</p>
-            <p className="text-xs text-muted-foreground">Width - 5</p>
+            <p className="text-xs text-muted-foreground">
+              {isDikey ? 'Height - 7' : 'Width - 7'}
+            </p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Boy</p>
             <p className="text-lg font-semibold">{calculations.boy} cm</p>
-            <p className="text-xs text-muted-foreground">Height - 5</p>
+            <p className="text-xs text-muted-foreground">
+              {isDikey ? 'Width - 7' : 'Height - 7'}
+            </p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Kanat</p>
             <p className="text-lg font-semibold">{calculations.kanat} cm</p>
-            <p className="text-xs text-muted-foreground">Height - 5.5</p>
+            <p className="text-xs text-muted-foreground">
+              Height - {isFlat ? '4.9' : '7.7'}
+            </p>
           </div>
+          {isFlat && calculations.flatValue !== null && (
+            <div>
+              <p className="text-sm text-muted-foreground">9 mm</p>
+              <p className="text-lg font-semibold">{calculations.flatValue.toFixed(1)} cm</p>
+              <p className="text-xs text-muted-foreground">Width - 3.4</p>
+            </div>
+          )}
           <div>
             <p className="text-sm text-muted-foreground">Profil renk</p>
             <p className="text-lg font-semibold">{calculations.profilRenk}</p>
@@ -61,7 +86,14 @@ const SawingView = ({ item, store, itemNumber }: SawingViewProps) => {
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Esik</p>
-            <p className="text-lg font-semibold">{calculations.esik}</p>
+            {isFlat ? (
+              <>
+                <p className="text-lg font-semibold">{calculations.flatValue?.toFixed(1)} cm</p>
+                <p className="text-xs text-muted-foreground">Width - 3.4</p>
+              </>
+            ) : (
+              <p className="text-lg font-semibold">{calculations.esik}</p>
+            )}
           </div>
         </div>
       </CardContent>

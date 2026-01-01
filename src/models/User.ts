@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 interface IUser {
   email: string;
   password: string;
-  role: "Admin" | "Frame Cutting" | "Mesh Cutting" | "Quality";
+  role: "Admin" | "Frame Cutting" | "Mesh Cutting" | "Quality" | "Packaging" | "Assembly" | "Shipping";
   name: string;
   isActive: boolean;
   createdAt: Date;
@@ -31,7 +31,7 @@ const UserSchema = new Schema<IUser, UserModel, IUserMethods>(
     role: {
       type: String,
       required: true,
-      enum: ["Admin", "Frame Cutting", "Mesh Cutting", "Quality"],
+      enum: ["Admin", "Frame Cutting", "Mesh Cutting", "Quality", "Packaging", "Assembly", "Shipping"],
     },
     name: { type: String, required: true },
     isActive: { type: Boolean, default: true },

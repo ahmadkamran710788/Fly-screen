@@ -591,19 +591,19 @@ export default function Page() {
     if (role === "Admin") return true;
     if (
       role === "Quality" &&
-      item.frameCuttingStatus === "Ready to Package" &&
-      item.meshCuttingStatus === "Ready to Package"
+      item.frameCuttingStatus === "Complete" &&
+      item.meshCuttingStatus === "Complete"
     )
       return true;
     return false;
   };
 
   const getFrameCuttingStatuses = (): FrameCuttingStatus[] => {
-    return ["Pending", "Ready to Package"];
+    return ["Pending", "Complete"];
   };
 
   const getMeshCuttingStatuses = (): MeshCuttingStatus[] => {
-    return ["Pending", "Ready to Package"];
+    return ["Pending", "Complete"];
   };
 
   const getQualityStatuses = (): QualityStatus[] => {

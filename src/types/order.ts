@@ -3,8 +3,8 @@ export type Store = '.nl' | '.de' | '.dk' | '.fr' | '.uk';
 export type Role = 'Admin' | 'Frame Cutting' | 'Mesh Cutting' | 'Quality';
 
 // New: Separate status types for each stage
-export type FrameCuttingStatus = 'Pending' | 'Ready to Package';
-export type MeshCuttingStatus = 'Pending' | 'Ready to Package';
+export type FrameCuttingStatus = 'Pending' | 'Complete';
+export type MeshCuttingStatus = 'Pending' | 'Complete';
 export type QualityStatus = 'Pending' | 'Ready to Package' | 'Packed';
 
 // Overall order status

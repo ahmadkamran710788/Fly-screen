@@ -85,7 +85,7 @@ export async function PATCH(
         }
       }
 
-      // Validation: Quality can only change status if both Frame and Mesh are "Ready to Package"
+      // Validation: Quality can only change status if both Frame and Mesh are "Complete"
       if (qualityStatus !== undefined && qualityStatus !== "Pending") {
         const currentFrameStatus =
           frameCuttingStatus ?? item.frameCuttingStatus ?? "Pending";
@@ -93,13 +93,13 @@ export async function PATCH(
           meshCuttingStatus ?? item.meshCuttingStatus ?? "Pending";
 
         if (
-          currentFrameStatus !== "Ready to Package" ||
-          currentMeshStatus !== "Ready to Package"
+          currentFrameStatus !== "Complete" ||
+          currentMeshStatus !== "Complete"
         ) {
           return NextResponse.json(
             {
               error:
-                "Quality status can only be changed when both Frame and Mesh cutting are Ready to Package",
+                "Quality status can only be changed when both Frame and Mesh cutting are Complete",
             },
             { status: 400 }
           );

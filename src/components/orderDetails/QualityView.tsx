@@ -30,10 +30,10 @@ const QualityView = ({ item, store, itemNumber }: QualityViewProps) => {
         <CardTitle className="flex items-center justify-between">
           <span>Item {itemNumber} - Quality & Packaging</span>
           <div className="flex gap-2">
-            <Badge variant={item.frameCuttingStatus === 'Ready to Package' ? 'default' : 'secondary'}>
+            <Badge variant={item.frameCuttingStatus === 'Complete' ? 'default' : 'secondary'}>
               Frame: {item.frameCuttingStatus}
             </Badge>
-            <Badge variant={item.meshCuttingStatus === 'Ready to Package' ? 'default' : 'secondary'}>
+            <Badge variant={item.meshCuttingStatus === 'Complete' ? 'default' : 'secondary'}>
               Mesh: {item.meshCuttingStatus}
             </Badge>
             <Badge variant={item.qualityStatus === 'Packed' ? 'default' : 'secondary'}>
