@@ -5,15 +5,24 @@ import { formatDateGMT1 } from './timezone';
 
 // Calculate overall status of an order
 const getOverallStatus = (order: Order): string => {
-  // Check if all items have qualityStatus === "Packed"
-  const allPacked = order.items?.every((item) => item.qualityStatus === "Packed");
+  // Check if all items are completely finished (all 5 stages are Complete)
+  const allPacked = order.items?.every(
+    (item) =>
+      item.frameCuttingStatus === "Complete" &&
+      item.meshCuttingStatus === "Complete" &&
+      item.qualityStatus === "Complete" &&
+      item.assemblyStatus === "Complete" &&
+      item.packagingStatus === "Complete"
+  );
 
-  // Check if all items are still pending (all 3 statuses are pending)
+  // Check if all items are still pending (all 5 statuses are pending)
   const allPending = order.items?.every(
     (item) =>
       item.frameCuttingStatus === "Pending" &&
       item.meshCuttingStatus === "Pending" &&
-      item.qualityStatus === "Pending"
+      item.qualityStatus === "Pending" &&
+      item.assemblyStatus === "Pending" &&
+      item.packagingStatus === "Pending"
   );
 
   if (allPacked) return "Completed";

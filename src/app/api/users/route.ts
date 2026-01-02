@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   try {
     const user = await requireAuth(req);
-    
+
     // Only Admin can access user management
     if (user.role !== "Admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth(req);
-    
+
     // Only Admin can create users
     if (user.role !== "Admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Return user without password
-    const userResponse = newUser.toObject();
+    const userResponse = newUser.toObject() as any;
     delete userResponse.password;
 
     return NextResponse.json(

@@ -15,7 +15,7 @@ export async function GET(
 ) {
   try {
     const user = await requireAuth(req);
-    
+
     // Only Admin can access user management
     if (user.role !== "Admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
@@ -55,7 +55,7 @@ export async function PATCH(
 ) {
   try {
     const user = await requireAuth(req);
-    
+
     // Only Admin can update users
     if (user.role !== "Admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
@@ -107,7 +107,7 @@ export async function PATCH(
     await foundUser.save();
 
     // Return user without password
-    const userResponse = foundUser.toObject();
+    const userResponse = foundUser.toObject() as any;
     delete userResponse.password;
 
     return NextResponse.json({
@@ -135,7 +135,7 @@ export async function DELETE(
 ) {
   try {
     const user = await requireAuth(req);
-    
+
     // Only Admin can delete users
     if (user.role !== "Admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
