@@ -14,6 +14,7 @@ import { Search, X } from "lucide-react";
 
 interface OrderFiltersProps {
   onFilterChange: (filters: FilterState) => void;
+  role: string | null;
 }
 
 export interface FilterState {
@@ -23,9 +24,11 @@ export interface FilterState {
   orderDate: string;
   deliveryDate: string;
   deadlineStatus: string;
+  minWeight: string;
+  maxWeight: string;
 }
 
-const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
+const OrderFilters = ({ onFilterChange, role }: OrderFiltersProps) => {
   const [filters, setFilters] = useState<FilterState>({
     orderNumber: "",
     stores: [],
@@ -33,6 +36,8 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
     orderDate: "",
     deliveryDate: "",
     deadlineStatus: "all",
+    minWeight: "",
+    maxWeight: "",
   });
 
   // Debounce timeout ref for text input
@@ -59,6 +64,8 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
       orderDate: "",
       deliveryDate: "",
       deadlineStatus: "all",
+      minWeight: "",
+      maxWeight: "",
     };
     setFilters(resetFilters);
     onFilterChange(resetFilters);
@@ -244,6 +251,39 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
               </SelectContent>
             </Select>
           </div>
+
+          {(role === "Admin" || role === "Shipping") && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="minWeight">Min Weight (kg)</Label>
+                <Input
+                  id="minWeight"
+                  type="number"
+                  placeholder="0"
+                  min="0"
+                  max="1200"
+                  value={filters.minWeight}
+                  onChange={(e) =>
+                    updateFiltersDebounced({ minWeight: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="maxWeight">Max Weight (kg)</Label>
+                <Input
+                  id="maxWeight"
+                  type="number"
+                  placeholder="1200"
+                  min="0"
+                  max="1200"
+                  value={filters.maxWeight}
+                  onChange={(e) =>
+                    updateFiltersDebounced({ maxWeight: e.target.value })
+                  }
+                />
+              </div>
+            </>
+          )}
 
           <div className="flex items-end">
             <Button

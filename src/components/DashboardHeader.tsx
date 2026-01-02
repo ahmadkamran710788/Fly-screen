@@ -131,25 +131,26 @@ const DashboardHeader = () => {
             </div>
 
             {role === "Admin" && (
-              <>
-                <Button
-                  onClick={handleUserManagement}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 hover:cursor-pointer"
-                >
-                  <Users className="h-4 w-4" />
-                  User Management
-                </Button>
-                <Button
-                  onClick={handleCreateOrder}
-                  size="sm"
-                  className="gap-2 hover:cursor-pointer"
-                >
-                  <Plus className="h-4 w-4" />
-                  Create Order
-                </Button>
-              </>
+              <Button
+                onClick={handleUserManagement}
+                variant="outline"
+                size="sm"
+                className="gap-2 hover:cursor-pointer"
+              >
+                <Users className="h-4 w-4" />
+                User Management
+              </Button>
+            )}
+
+            {role === "Admin" && (
+              <Button
+                onClick={handleCreateOrder}
+                size="sm"
+                className="gap-2 hover:cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                Create Order
+              </Button>
             )}
 
             <Button

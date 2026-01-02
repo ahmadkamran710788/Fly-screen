@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Trash2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Trash2, AlertTriangle, Printer } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -41,6 +41,7 @@ import {
   AssemblyStatus,
 } from "@/types/order";
 import { useOrderSync } from "@/hooks/useOrderSync";
+import { exportPackagingOrderToPDF } from "@/lib/exportToPDF";
 import { mapProfileColor } from "@/lib/mappings";
 
 export default function Page() {
@@ -69,6 +70,8 @@ export default function Page() {
 
           return {
             ...prev,
+            status: event.orderStatus ?? prev.status,
+            shippingStatus: event.shippingStatus ?? prev.shippingStatus,
             items: prev.items.map((item: any) =>
               item.id === event.itemId
                 ? {
@@ -78,7 +81,8 @@ export default function Page() {
                   meshCuttingStatus:
                     event.meshCuttingStatus ?? item.meshCuttingStatus,
                   qualityStatus: event.qualityStatus ?? item.qualityStatus,
-                  packagingStatus: event.packagingStatus ?? item.packagingStatus,
+                  packagingStatus:
+                    event.packagingStatus ?? item.packagingStatus,
                   assemblyStatus: event.assemblyStatus ?? item.assemblyStatus,
                 }
                 : item
@@ -330,7 +334,18 @@ export default function Page() {
       }
 
       const result = await response.json();
-      console.log("Frame cutting status update result:", result);
+
+      // Update local state with potentially changed shippingStatus or overall status
+      if (result.order) {
+        setOrder((prev: any) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            status: result.order.status,
+            shippingStatus: result.order.shippingStatus,
+          };
+        });
+      }
 
       toast({
         title: "Status Updated",
@@ -398,7 +413,18 @@ export default function Page() {
       }
 
       const result = await response.json();
-      console.log("Mesh cutting status update result:", result);
+
+      // Update local state with potentially changed shippingStatus or overall status
+      if (result.order) {
+        setOrder((prev: any) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            status: result.order.status,
+            shippingStatus: result.order.shippingStatus,
+          };
+        });
+      }
 
       toast({
         title: "Status Updated",
@@ -464,7 +490,18 @@ export default function Page() {
       }
 
       const result = await response.json();
-      console.log("Packaging status update result:", result);
+
+      // Update local state with potentially changed shippingStatus or overall status
+      if (result.order) {
+        setOrder((prev: any) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            status: result.order.status,
+            shippingStatus: result.order.shippingStatus,
+          };
+        });
+      }
 
       toast({
         title: "Status Updated",
@@ -530,7 +567,18 @@ export default function Page() {
       }
 
       const result = await response.json();
-      console.log("Quality status update result:", result);
+
+      // Update local state with potentially changed shippingStatus or overall status
+      if (result.order) {
+        setOrder((prev: any) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            status: result.order.status,
+            shippingStatus: result.order.shippingStatus,
+          };
+        });
+      }
 
       toast({
         title: "Status Updated",
@@ -596,7 +644,18 @@ export default function Page() {
       }
 
       const result = await response.json();
-      console.log("Assembly status update result:", result);
+
+      // Update local state with potentially changed shippingStatus or overall status
+      if (result.order) {
+        setOrder((prev: any) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            status: result.order.status,
+            shippingStatus: result.order.shippingStatus,
+          };
+        });
+      }
 
       toast({
         title: "Status Updated",
@@ -856,16 +915,28 @@ export default function Page() {
             <ArrowLeft className="h-4 w-4" />
             Back to Orders
           </Button>
-          {role === "Admin" && (
-            <Button
-              variant="destructive"
-              onClick={handleDeleteOrderClick}
-              className="gap-2"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete Order
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {(role === "Packaging" || role === "Admin" || role === "Shipping") && (
+              <Button
+                variant="outline"
+                onClick={() => exportPackagingOrderToPDF(order)}
+                className="gap-2"
+              >
+                <Printer className="h-4 w-4" />
+                Print Order
+              </Button>
+            )}
+            {role === "Admin" && (
+              <Button
+                variant="destructive"
+                onClick={handleDeleteOrderClick}
+                className="gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Order
+              </Button>
+            )}
+          </div>
         </div>
 
         <Card>
@@ -915,19 +986,24 @@ export default function Page() {
                   {order.items.length} item{order.items.length !== 1 ? "s" : ""}
                 </p>
               </div>
-              {role === "Admin" && (
+              {(role === "Admin" || role === "Shipping") && (
                 <div>
                   <p className="text-sm text-muted-foreground">Shipping Status</p>
                   <Select
                     value={order.shippingStatus || "Pending"}
                     onValueChange={handleShippingStatusChange}
+                    disabled={
+                      role === "Shipping" &&
+                      !order.items.every((item: any) => item.packagingStatus === "Complete")
+                    }
                   >
                     <SelectTrigger className="w-[140px] mt-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Pending">Pending</SelectItem>
-                      <SelectItem value="Complete">Complete</SelectItem>
+                      <SelectItem value="Packed">Packed</SelectItem>
+                      <SelectItem value="In Transit">In Transit</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -951,7 +1027,7 @@ export default function Page() {
                   )}
                 </h4>
                 <div className="flex items-center gap-4">
-                  {(role === "Frame Cutting" || role === "Admin") && (
+                  {(role === "Frame Cutting" || role === "Admin" || role === "Shipping") && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
                         Frame:
@@ -964,7 +1040,7 @@ export default function Page() {
                             value as FrameCuttingStatus
                           )
                         }
-                        disabled={!canEditFrameCuttingStatus(item)}
+                        disabled={role === "Shipping" || !canEditFrameCuttingStatus(item)}
                       >
                         <SelectTrigger className="w-[180px]">
                           <SelectValue />
@@ -980,7 +1056,7 @@ export default function Page() {
                     </div>
                   )}
 
-                  {(role === "Mesh Cutting" || role === "Admin") && (
+                  {(role === "Mesh Cutting" || role === "Admin" || role === "Shipping") && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
                         Mesh:
@@ -993,7 +1069,7 @@ export default function Page() {
                             value as MeshCuttingStatus
                           )
                         }
-                        disabled={!canEditMeshCuttingStatus(item)}
+                        disabled={role === "Shipping" || !canEditMeshCuttingStatus(item)}
                       >
                         <SelectTrigger className="w-[180px]">
                           <SelectValue />
@@ -1009,7 +1085,7 @@ export default function Page() {
                     </div>
                   )}
 
-                  {(role === "Quality" || role === "Admin") && (
+                  {(role === "Quality" || role === "Admin" || role === "Shipping") && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
                         Quality:
@@ -1022,7 +1098,7 @@ export default function Page() {
                             value as QualityStatus
                           )
                         }
-                        disabled={!canEditQualityStatus(item)}
+                        disabled={role === "Shipping" || !canEditQualityStatus(item)}
                       >
                         <SelectTrigger className="w-[180px]">
                           <SelectValue />
@@ -1038,7 +1114,7 @@ export default function Page() {
                     </div>
                   )}
 
-                  {(role === "Assembly" || role === "Admin") && (
+                  {(role === "Assembly" || role === "Admin" || role === "Shipping") && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
                         Assembly:
@@ -1051,7 +1127,7 @@ export default function Page() {
                             value as AssemblyStatus
                           )
                         }
-                        disabled={!canEditAssemblyStatus(item)}
+                        disabled={role === "Shipping" || !canEditAssemblyStatus(item)}
                       >
                         <SelectTrigger className="w-[180px]">
                           <SelectValue />
@@ -1067,7 +1143,7 @@ export default function Page() {
                     </div>
                   )}
 
-                  {(role === "Packaging" || role === "Admin") && (
+                  {(role === "Packaging" || role === "Admin" || role === "Shipping") && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
                         Packaging:
@@ -1080,7 +1156,7 @@ export default function Page() {
                             value as PackagingStatus
                           )
                         }
-                        disabled={!canEditPackagingStatus(item)}
+                        disabled={role === "Shipping" || !canEditPackagingStatus(item)}
                       >
                         <SelectTrigger className="w-[180px]">
                           <SelectValue />
@@ -1138,7 +1214,7 @@ export default function Page() {
                 />
               )}
 
-              {role === "Admin" && (
+              {(role === "Admin" || role === "Shipping") && (
                 <>
                   <SawingView
                     item={item}
@@ -1172,11 +1248,12 @@ export default function Page() {
           ))}
         </div>
 
-        {(role === "Packaging" || role === "Admin") && (
+        {(role === "Packaging" || role === "Admin" || role === "Shipping") && (
           <BoxManagement
             order={order}
             onAddBox={handleAddBox}
             onDeleteBox={handleDeleteBox}
+            readOnly={role === "Shipping"}
           />
         )}
       </main>

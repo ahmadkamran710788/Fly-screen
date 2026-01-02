@@ -17,16 +17,23 @@ import { formatDateGMT1 } from "@/lib/timezone";
 
 interface OrderTableProps {
   orders: Order[];
+  role: string | null;
 }
 
 // Using centralized formatDateGMT1 from timezone utility
 // Date is already in GMT+1 from the dashboard mapping (isAlreadyGMT1 = true)
 
-const OrderTable = ({ orders }: OrderTableProps) => {
+const OrderTable = ({ orders, role }: OrderTableProps) => {
   const getDeadline = (orderDate: Date) => {
     const deadline = new Date(orderDate);
     deadline.setDate(deadline.getDate() + 3); // Add 3 days to order date
     return deadline;
+  };
+
+  const getETA = (orderDate: Date) => {
+    const eta = new Date(orderDate);
+    eta.setDate(eta.getDate() + 9); // Order Date + 3 (Delivery) + 6 = 9 days
+    return eta;
   };
 
   const getDeadlineStatus = (orderDate: Date) => {
@@ -106,7 +113,12 @@ const OrderTable = ({ orders }: OrderTableProps) => {
         item.packagingStatus === "Pending"
     );
 
-    if (allPacked) return { text: "Completed", variant: "default" as const };
+    if (allPacked) {
+      if (order.shippingStatus === "In Transit") {
+        return { text: "Completed", variant: "default" as const };
+      }
+      return { text: "In Progress", variant: "outline" as const };
+    }
     if (allPending) return { text: "Pending", variant: "secondary" as const };
     return { text: "In Progress", variant: "outline" as const };
   };
@@ -120,10 +132,14 @@ const OrderTable = ({ orders }: OrderTableProps) => {
             <TableHead>Name</TableHead>
             <TableHead>Order Date</TableHead>
             <TableHead>Delivery Date</TableHead>
+            <TableHead>ETA</TableHead>
             <TableHead>Store</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Items</TableHead>
             <TableHead>Deadline</TableHead>
+            {(role === "Admin" || role === "Shipping") && (
+              <TableHead>Total Weight (kg)</TableHead>
+            )}
             <TableHead>Action</TableHead>
           </TableRow>
         </TableHeader>
@@ -131,7 +147,7 @@ const OrderTable = ({ orders }: OrderTableProps) => {
           {orders.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={9}
+                colSpan={role === "Admin" || role === "Shipping" ? 11 : 10}
                 className="text-center py-8 text-muted-foreground"
               >
                 No orders found
@@ -146,6 +162,7 @@ const OrderTable = ({ orders }: OrderTableProps) => {
                 Date.now()
               );
               const deliveryDate = getDeadline(orderDate);
+              const eta = getETA(orderDate);
               const deadline = getDeadlineStatus(orderDate);
               const itemCount =
                 order.items?.length ?? (order as any).lineItems?.length ?? 0;
@@ -161,6 +178,7 @@ const OrderTable = ({ orders }: OrderTableProps) => {
                   </TableCell>
                   <TableCell>{formatDateGMT1(orderDate)}</TableCell>
                   <TableCell>{formatDateGMT1(deliveryDate)}</TableCell>
+                  <TableCell>{formatDateGMT1(eta)}</TableCell>
                   <TableCell>
                     <Badge variant="outline">
                       {order.store || (order as any).storeKey}
@@ -175,6 +193,15 @@ const OrderTable = ({ orders }: OrderTableProps) => {
                   <TableCell>
                     <Badge variant={deadline.variant}>{deadline.text}</Badge>
                   </TableCell>
+                  {(role === "Admin" || role === "Shipping") && (
+                    <TableCell className="font-medium">
+                      {order.boxes && order.boxes.length > 0
+                        ? order.boxes
+                          .reduce((acc, box) => acc + (box.weight || 0), 0)
+                          .toFixed(2)
+                        : "0.00"}
+                    </TableCell>
+                  )}
                   <TableCell>
                     <Button
                       size="sm"

@@ -49,7 +49,7 @@ export interface Order {
   store: Store;
   items: OrderItem[];
   boxes: Box[];
-  shippingStatus?: 'Pending' | 'Complete';
+  shippingStatus?: 'Pending' | 'Packed' | 'In Transit';
   firstName?: string;
   lastName?: string;
 }

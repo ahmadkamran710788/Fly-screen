@@ -25,11 +25,16 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   await connectToDatabase();
   const body = await req.json();
 
-  const updated = await OrderModel.findByIdAndUpdate(
-    id,
-    { $set: body },
-    { new: true }
-  );
+  const order = await OrderModel.findById(id);
+  if (!order) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Update fields
+  Object.assign(order, body);
+
+  // Save triggers pre('save') hook which handles business logic for status
+  const updated = await order.save();
 
   // Revalidate to ensure fresh data
   try {

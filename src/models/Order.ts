@@ -85,8 +85,12 @@ const OrderSchema = new Schema(
     closedAt: Date,
     shippingStatus: {
       type: String,
-      enum: ["Pending", "Complete"],
+      enum: ["Pending", "Packed", "In Transit"],
       default: "Pending",
+    },
+    totalWeight: {
+      type: Number,
+      default: 0,
     },
   },
   { timestamps: true }
@@ -117,11 +121,31 @@ OrderSchema.pre("save", function (next) {
 
     // Update the order status accordingly
     if (allPacked) {
-      this.status = "Completed";
+      // Auto-update shipping status to Packed if it is currently Pending
+      if (this.shippingStatus === "Pending") {
+        this.shippingStatus = "Packed";
+      }
+
+      // Overall status is only Completed if Shipping is In Transit
+      if (this.shippingStatus === "In Transit") {
+        this.status = "Completed";
+      } else {
+        this.status = "In Progress";
+      }
     } else if (allPending) {
       this.status = "Pending";
     } else {
       this.status = "In Progress";
+    }
+
+    // Calculate total weight
+    if (this.boxes && this.boxes.length > 0) {
+      this.totalWeight = this.boxes.reduce(
+        (acc: number, box: any) => acc + (box.weight || 0),
+        0
+      );
+    } else {
+      this.totalWeight = 0;
     }
   }
   next();
@@ -131,36 +155,27 @@ OrderSchema.pre("save", function (next) {
 OrderSchema.pre("findOneAndUpdate", async function (next) {
   const update = this.getUpdate() as any;
 
-  // Only proceed if lineItems are being updated
-  if (update && update.lineItems && update.lineItems.length > 0) {
-    // Check if all items are completely finished (all statuses are Complete)
-    const allPacked = update.lineItems.every(
-      (item: any) =>
-        item.frameCuttingStatus === "Complete" &&
-        item.meshCuttingStatus === "Complete" &&
-        item.qualityStatus === "Complete" &&
-        item.assemblyStatus === "Complete" &&
-        item.packagingStatus === "Complete"
-    );
+  // We can't easily check 'allPacked' here without fetching the doc, 
+  // but if we are updating shippingStatus to 'In Transit', we should set status to Completed.
 
-    // Check if all items are still pending (all statuses are pending)
-    const allPending = update.lineItems.every(
-      (item: any) =>
-        item.frameCuttingStatus === "Pending" &&
-        item.meshCuttingStatus === "Pending" &&
-        item.qualityStatus === "Pending" &&
-        item.assemblyStatus === "Pending" &&
-        item.packagingStatus === "Pending"
-    );
-
-    // Update the order status accordingly
-    if (allPacked) {
-      update.status = "Completed";
-    } else if (allPending) {
-      update.status = "Pending";
-    } else {
-      update.status = "In Progress";
+  if (update) {
+    // Handle shipping status updates
+    if (update.$set && update.$set.shippingStatus) {
+      if (update.$set.shippingStatus === "In Transit") {
+        update.$set.status = "Completed";
+      } else if (update.$set.shippingStatus === "Packed" || update.$set.shippingStatus === "Pending") {
+        // If reverting from In Transit, usually revert to In Progress (unless we check items, which is hard here)
+        // Ideally we trust the save hook logic more, which is why api/orders/[id] should use save().
+        // But valid effort:
+        if (update.$set.status === "Completed") {
+          update.$set.status = "In Progress";
+        }
+      }
     }
+
+    // Logic for item updates is complex here without full document context. 
+    // We will rely on route handlers using save() or findOne() which triggers save() middleware 
+    // for complex state transitions.
   }
 
   next();

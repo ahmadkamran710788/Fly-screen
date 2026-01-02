@@ -25,7 +25,12 @@ function calculateOrderStatus(
       item.assemblyStatus === "Complete" &&
       item.packagingStatus === "Complete"
   );
-  if (allPacked) return "Completed";
+
+  if (allPacked) {
+    // Return In Progress because final "Completed" status depends on Shipping Status being "In Transit"
+    // The Order Model pre-save hook will handle the final transition if Shipping is In Transit.
+    return "In Progress";
+  }
 
   // Check if all items are still pending (all 5 statuses are Pending)
   const allPending = lineItems.every(
@@ -148,6 +153,7 @@ export async function PATCH(
       assemblyStatus: order.lineItems[itemIndex].assemblyStatus,
       packagingStatus: order.lineItems[itemIndex].packagingStatus,
       orderStatus: order.status,
+      shippingStatus: order.shippingStatus,
       timestamp: new Date().toISOString(),
     });
 

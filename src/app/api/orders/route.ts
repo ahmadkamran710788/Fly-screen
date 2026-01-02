@@ -236,6 +236,8 @@ export async function GET(req: NextRequest) {
     const orderDate = searchParams.get("orderDate");
     const deliveryDate = searchParams.get("deliveryDate");
     const deadlineStatus = searchParams.get("deadlineStatus");
+    const minWeight = searchParams.get("minWeight");
+    const maxWeight = searchParams.get("maxWeight");
 
     // Calculate skip
     const skip = (page - 1) * limit;
@@ -415,6 +417,14 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Filter by weight range
+    if (minWeight || maxWeight) {
+      const weightCondition: any = {};
+      if (minWeight) weightCondition.$gte = parseFloat(minWeight);
+      if (maxWeight) weightCondition.$lte = parseFloat(maxWeight);
+      andConditions.push({ totalWeight: weightCondition });
+    }
+
     // Combine all conditions with $and if there are any
     if (andConditions.length > 0) {
       filterQuery.$and = andConditions;
@@ -424,7 +434,7 @@ export async function GET(req: NextRequest) {
     // Use lean() for better performance and add index hints
     const queryPromise = OrderModel.find(filterQuery)
       .select(
-        "orderNumber shopifyId status storeKey lineItems total createdAt processedAt name raw boxes customer"
+        "orderNumber shopifyId status storeKey lineItems total createdAt processedAt name raw boxes customer shippingStatus totalWeight"
       )
       .sort(sortOptions)
       .skip(skip)

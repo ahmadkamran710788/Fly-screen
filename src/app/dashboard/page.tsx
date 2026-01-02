@@ -68,6 +68,12 @@ async function getOrders(
   if (filters?.deadlineStatus && filters.deadlineStatus !== "all") {
     params.append("deadlineStatus", filters.deadlineStatus);
   }
+  if (filters?.minWeight) {
+    params.append("minWeight", filters.minWeight);
+  }
+  if (filters?.maxWeight) {
+    params.append("maxWeight", filters.maxWeight);
+  }
 
   const response = await fetch(`${baseUrl}/api/orders?${params.toString()}`, {
     cache: "no-store",
@@ -100,6 +106,8 @@ export default function Page() {
     orderDate: "",
     deliveryDate: "",
     deadlineStatus: "all",
+    minWeight: "",
+    maxWeight: "",
   });
 
   // Fetch Orders - triggers on page, limit, or filter changes
@@ -115,59 +123,7 @@ export default function Page() {
         setHasPrevPage(data.pagination.hasPrevPage);
         setTotalCount(data.pagination.totalCount);
 
-        const mapped: Order[] = docs.map((o: any, index: number) => {
-          // Keep the date in UTC - formatting functions will handle GMT+1 conversion
-          const utcDate = o.processedAt
-            ? new Date(o.processedAt)
-            : new Date(o.createdAt || Date.now());
-
-          return {
-            id:
-              (o?._id &&
-                (typeof o._id === "string" ? o._id : o._id.toString())) ||
-              String(o.shopifyId) ||
-              `order-${index}`,
-            orderNumber: String(o.name || o.shopifyId || "").replace(/^#/, ""),
-            orderDate: utcDate,
-            store: `.${o.storeKey || "nl"}` as any,
-            items: (o.lineItems || []).map((li: any, idx: number) => ({
-              id: String(li.id || `${o.shopifyId}-${idx + 1}`),
-              width: 0,
-              height: 0,
-              profileColor: "",
-              orientation: "",
-              installationType: "",
-              thresholdType: "",
-              meshType: "",
-              curtainType: "",
-              fabricColor: "",
-              closureType: "",
-              mountingType: "",
-              frameCuttingStatus: li.frameCuttingStatus || "Pending",
-              meshCuttingStatus: li.meshCuttingStatus || "Pending",
-              qualityStatus: li.qualityStatus || "Pending",
-              packagingStatus: li.packagingStatus || "Pending",
-            })),
-            boxes: [],
-            firstName:
-              o.customer?.firstName ||
-              o.customer?.first_name ||
-              o.billingAddress?.firstName ||
-              o.billingAddress?.first_name ||
-              o.shippingAddress?.firstName ||
-              o.shippingAddress?.first_name ||
-              "",
-            lastName:
-              o.customer?.lastName ||
-              o.customer?.last_name ||
-              o.billingAddress?.lastName ||
-              o.billingAddress?.last_name ||
-              o.shippingAddress?.lastName ||
-              o.shippingAddress?.last_name ||
-              "",
-          };
-        });
-
+        const mapped = mapOrders(docs);
         setOrders(mapped);
       } catch (error) {
         console.error("Failed to load orders:", error);
@@ -318,93 +274,95 @@ export default function Page() {
             </p>
           </div>
 
-          <div className="flex gap-2">
-            <Button
-              onClick={() => handleExport("excel")}
-              variant="outline"
-              className="gap-2 hover:cursor-pointer"
-            >
-              <FileSpreadsheet className="h-4 w-4" />
-              Export Excel
-            </Button>
-
-            {/* For Admin: Show dropdown with PDF export options */}
-            {role === "Admin" ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="gap-2 hover:cursor-pointer"
-                  >
-                    <FileText className="h-4 w-4" />
-                    Export PDF
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => handleExport("pdf", "all")}
-                    className="cursor-pointer"
-                  >
-                    All Orders
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleExport("pdf", "frame")}
-                    className="cursor-pointer"
-                  >
-                    Frame Cutting Detail
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleExport("pdf", "mesh")}
-                    className="cursor-pointer"
-                  >
-                    Mesh Cutting Detail
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : role === "Quality" ? (
-              // For Quality: Show dropdown with 2 PDF export options
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="gap-2 hover:cursor-pointer"
-                  >
-                    <FileText className="h-4 w-4" />
-                    Export PDF
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => handleExport("pdf", "frame")}
-                    className="cursor-pointer"
-                  >
-                    Frame Cutting Detail
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleExport("pdf", "mesh")}
-                    className="cursor-pointer"
-                  >
-                    Mesh Cutting Detail
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              // For Frame Cutting and Mesh Cutting roles: Show regular PDF export button
+          {role !== "Shipping" && (
+            <div className="flex gap-2">
               <Button
-                onClick={() => handleExport("pdf")}
+                onClick={() => handleExport("excel")}
                 variant="outline"
                 className="gap-2 hover:cursor-pointer"
               >
-                <FileText className="h-4 w-4" />
-                Export PDF
+                <FileSpreadsheet className="h-4 w-4" />
+                Export Excel
               </Button>
-            )}
-          </div>
+
+              {/* For Admin: Show dropdown with PDF export options */}
+              {role === "Admin" ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="gap-2 hover:cursor-pointer"
+                    >
+                      <FileText className="h-4 w-4" />
+                      Export PDF
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => handleExport("pdf", "all")}
+                      className="cursor-pointer"
+                    >
+                      All Orders
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleExport("pdf", "frame")}
+                      className="cursor-pointer"
+                    >
+                      Frame Cutting Detail
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleExport("pdf", "mesh")}
+                      className="cursor-pointer"
+                    >
+                      Mesh Cutting Detail
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : role === "Quality" ? (
+                // For Quality: Show dropdown with 2 PDF export options
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="gap-2 hover:cursor-pointer"
+                    >
+                      <FileText className="h-4 w-4" />
+                      Export PDF
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => handleExport("pdf", "frame")}
+                      className="cursor-pointer"
+                    >
+                      Frame Cutting Detail
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleExport("pdf", "mesh")}
+                      className="cursor-pointer"
+                    >
+                      Mesh Cutting Detail
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                // For Frame Cutting and Mesh Cutting roles: Show regular PDF export button
+                <Button
+                  onClick={() => handleExport("pdf")}
+                  variant="outline"
+                  className="gap-2 hover:cursor-pointer"
+                >
+                  <FileText className="h-4 w-4" />
+                  Export PDF
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
-        <OrderFilters onFilterChange={handleFilterChange} />
+        <OrderFilters onFilterChange={handleFilterChange} role={role} />
 
         <div className="relative">
           {loading && (
@@ -412,7 +370,7 @@ export default function Page() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           )}
-          <OrderTable orders={orders} />
+          <OrderTable orders={orders} role={role} />
         </div>
 
         {/* Pagination Controls */}

@@ -26,7 +26,10 @@ const getOverallStatus = (order: Order): string => {
       item.packagingStatus === "Pending"
   );
 
-  if (allPacked) return "Completed";
+  if (allPacked) {
+    if (order.shippingStatus === "In Transit") return "Completed";
+    return "In Progress";
+  }
   if (allPending) return "Pending";
   return "In Progress";
 };
@@ -298,4 +301,53 @@ export const exportMeshCuttingOnlyToPDF = (orders: Order[]) => {
   addMeshCuttingTable(doc, orders, 20);
 
   doc.save(`Mesh_Cutting_Detail_${new Date().toISOString().split('T')[0]}.pdf`);
+};
+// Export for Packaging: Simple order summary (Order Number, Name, Item Count)
+export const exportPackagingOrderToPDF = (order: Order) => {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: [100, 150] // label format
+  });
+
+  const firstName = order.firstName || "";
+  const lastName = order.lastName || "";
+  const fullName = `${firstName} ${lastName}`.trim() || "-";
+  const itemCount = order.items?.length || 0;
+
+  // Header - Order Number
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(14);
+  doc.setTextColor(100);
+  doc.text('Order Number', 10, 20);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  doc.setTextColor(0);
+  doc.text(order.orderNumber, 10, 32);
+
+  // Name
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(14);
+  doc.setTextColor(100);
+  doc.text('Name', 10, 50);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(0);
+  doc.text(fullName, 10, 62);
+
+  // Items
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(14);
+  doc.setTextColor(100);
+  doc.text('Items', 10, 80);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(0);
+  doc.text(`${itemCount} ${itemCount === 1 ? 'item' : 'items'}`, 10, 92);
+
+  // Download
+  doc.save(`Order_${order.orderNumber}_Label.pdf`);
 };

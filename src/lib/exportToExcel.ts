@@ -25,7 +25,10 @@ const getOverallStatus = (order: Order): string => {
       item.packagingStatus === "Pending"
   );
 
-  if (allPacked) return "Completed";
+  if (allPacked) {
+    if (order.shippingStatus === "In Transit") return "Completed";
+    return "In Progress";
+  }
   if (allPending) return "Pending";
   return "In Progress";
 };
