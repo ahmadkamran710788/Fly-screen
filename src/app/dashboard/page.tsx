@@ -21,6 +21,7 @@ import {
   exportFrameToExcel,
   exportMeshToExcel,
   exportQualityToExcel,
+  exportPackingToExcel,
 } from "@/lib/exportToExcel";
 import {
   exportAdminToPDF,
@@ -30,6 +31,7 @@ import {
   exportAllOrdersToPDF,
   exportFrameCuttingOnlyToPDF,
   exportMeshCuttingOnlyToPDF,
+  exportPackingToPDF,
 } from "@/lib/exportToPDF";
 import { mapOrders } from "@/lib/orderMapper";
 
@@ -202,6 +204,8 @@ export default function Page() {
           exportMeshToExcel(mappedOrders);
         } else if (role === "Quality") {
           exportQualityToExcel(mappedOrders);
+        } else if (role === "Packaging") {
+          exportPackingToExcel(mappedOrders);
         }
       } else if (format === "pdf") {
         if (role === "Admin") {
@@ -230,6 +234,8 @@ export default function Page() {
             // Default: export both sections (backward compatibility)
             exportQualityToPDF(mappedOrders);
           }
+        } else if (role === "Packaging") {
+          exportPackingToPDF(mappedOrders);
         }
       }
 

@@ -178,6 +178,41 @@ const createMeshCuttingSheet = (orders: Order[]) => {
   return data;
 };
 
+// Create Box Details sheet data
+const createBoxDetailsSheet = (orders: Order[]) => {
+  const data: any[] = [];
+
+  // Header row
+  data.push([
+    'Order Number',
+    'Box ID',
+    'Length (cm)',
+    'Width (cm)',
+    'Height (cm)',
+    'Weight (kg)',
+    'Items In Box',
+  ]);
+
+  // Data rows
+  orders.forEach((order) => {
+    if (order.boxes && order.boxes.length > 0) {
+      order.boxes.forEach((box) => {
+        data.push([
+          order.orderNumber,
+          box.id,
+          box.length,
+          box.width,
+          box.height,
+          box.weight,
+          box.items.join(', '),
+        ]);
+      });
+    }
+  });
+
+  return data;
+};
+
 // Export for Admin: 3 sheets (All Orders, Frame Cutting Detail, Mesh Cutting Details)
 export const exportAdminToExcel = (orders: Order[]) => {
   const wb = XLSX.utils.book_new();
@@ -196,6 +231,13 @@ export const exportAdminToExcel = (orders: Order[]) => {
   const meshCuttingData = createMeshCuttingSheet(orders);
   const ws3 = XLSX.utils.aoa_to_sheet(meshCuttingData);
   XLSX.utils.book_append_sheet(wb, ws3, 'Mesh Cutting Details');
+
+  // Sheet 4: Box Details
+  const boxDetailsData = createBoxDetailsSheet(orders);
+  if (boxDetailsData.length > 1) {
+    const ws4 = XLSX.utils.aoa_to_sheet(boxDetailsData);
+    XLSX.utils.book_append_sheet(wb, ws4, 'Box Details');
+  }
 
   // Download
   XLSX.writeFile(wb, `Admin_Orders_Export_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -244,3 +286,24 @@ export const exportQualityToExcel = (orders: Order[]) => {
   // Download
   XLSX.writeFile(wb, `Quality_Export_${new Date().toISOString().split('T')[0]}.xlsx`);
 };
+
+// Export for Packing: 2 sheets (All Orders, Box Details)
+export const exportPackingToExcel = (orders: Order[]) => {
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: All Orders
+  const allOrdersData = createAllOrdersSheet(orders);
+  const ws1 = XLSX.utils.aoa_to_sheet(allOrdersData);
+  XLSX.utils.book_append_sheet(wb, ws1, 'All Orders');
+
+  // Sheet 2: Box Details
+  const boxDetailsData = createBoxDetailsSheet(orders);
+  if (boxDetailsData.length > 1) {
+    const ws2 = XLSX.utils.aoa_to_sheet(boxDetailsData);
+    XLSX.utils.book_append_sheet(wb, ws2, 'Box Details');
+  }
+
+  // Download
+  XLSX.writeFile(wb, `Packing_Export_${new Date().toISOString().split('T')[0]}.xlsx`);
+};
+

@@ -273,7 +273,7 @@ const OrderFilters = ({ onFilterChange, role }: OrderFiltersProps) => {
                 <Input
                   id="maxWeight"
                   type="number"
-                  placeholder="1200"
+                  placeholder="Weight"
                   min="0"
                   max="1200"
                   value={filters.maxWeight}

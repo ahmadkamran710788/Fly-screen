@@ -200,6 +200,51 @@ const addMeshCuttingTable = (doc: jsPDF, orders: Order[], startY: number = 20) =
   return doc;
 };
 
+// Add Box Details table to PDF
+const addBoxDetailsTable = (doc: jsPDF, orders: Order[], startY: number = 20) => {
+  const tableData: any[] = [];
+
+  orders.forEach((order) => {
+    if (order.boxes && order.boxes.length > 0) {
+      order.boxes.forEach((box) => {
+        tableData.push([
+          order.orderNumber,
+          box.id,
+          box.length,
+          box.width,
+          box.height,
+          box.weight,
+          box.items.join(', '),
+        ]);
+      });
+    }
+  });
+
+  if (tableData.length === 0) return doc;
+
+  autoTable(doc, {
+    startY,
+    head: [
+      [
+        'Order Number',
+        'Box ID',
+        'Length (cm)',
+        'Width (cm)',
+        'Height (cm)',
+        'Weight (kg)',
+        'Items In Box',
+      ],
+    ],
+    body: tableData,
+    theme: 'grid',
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+  });
+
+  return doc;
+};
+
+
 // Export for Admin: 3 pages (All Orders, Frame Cutting Detail, Mesh Cutting Details)
 export const exportAdminToPDF = (orders: Order[]) => {
   const doc = new jsPDF('landscape');
@@ -220,6 +265,12 @@ export const exportAdminToPDF = (orders: Order[]) => {
   doc.setFontSize(16);
   doc.text('Mesh Cutting Details', 14, 15);
   addMeshCuttingTable(doc, orders, 20);
+
+  // Page 4: Box Details
+  doc.addPage();
+  doc.setFontSize(16);
+  doc.text('Box Details', 14, 15);
+  addBoxDetailsTable(doc, orders, 20);
 
   // Download
   doc.save(`Admin_Orders_Export_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -302,6 +353,26 @@ export const exportMeshCuttingOnlyToPDF = (orders: Order[]) => {
 
   doc.save(`Mesh_Cutting_Detail_${new Date().toISOString().split('T')[0]}.pdf`);
 };
+
+// Export for Packing: 2 pages (All Orders, Box Details)
+export const exportPackingToPDF = (orders: Order[]) => {
+  const doc = new jsPDF('landscape');
+
+  // Page 1: All Orders
+  doc.setFontSize(16);
+  doc.text('All Orders', 14, 15);
+  addAllOrdersTable(doc, orders, 20);
+
+  // Page 2: Box Details
+  doc.addPage();
+  doc.setFontSize(16);
+  doc.text('Box Details', 14, 15);
+  addBoxDetailsTable(doc, orders, 20);
+
+  // Download
+  doc.save(`Packing_Export_${new Date().toISOString().split('T')[0]}.pdf`);
+};
+
 // Export for Packaging: Simple order summary (Order Number, Name, Item Count)
 export const exportPackagingOrderToPDF = (order: Order) => {
   const doc = new jsPDF({
