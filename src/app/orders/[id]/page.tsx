@@ -7,6 +7,8 @@ import DashboardHeader from "@/components/DashboardHeader";
 import SawingView from "@/components/orderDetails/SawingView";
 import MeshCuttingView from "@/components/orderDetails/MeshCuttingView";
 import QualityView from "@/components/orderDetails/QualityView";
+import PackagingView from "@/components/orderDetails/PackagingView";
+import AssembleView from "@/components/orderDetails/AssembleView";
 import BoxManagement from "@/components/orderDetails/BoxManagement";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,8 +37,11 @@ import {
   FrameCuttingStatus,
   MeshCuttingStatus,
   QualityStatus,
+  PackagingStatus,
+  AssemblyStatus,
 } from "@/types/order";
 import { useOrderSync } from "@/hooks/useOrderSync";
+import { mapProfileColor } from "@/lib/mappings";
 
 export default function Page() {
   const params = useParams<{ id: string }>();
@@ -67,13 +72,15 @@ export default function Page() {
             items: prev.items.map((item: any) =>
               item.id === event.itemId
                 ? {
-                    ...item,
-                    frameCuttingStatus:
-                      event.frameCuttingStatus ?? item.frameCuttingStatus,
-                    meshCuttingStatus:
-                      event.meshCuttingStatus ?? item.meshCuttingStatus,
-                    qualityStatus: event.qualityStatus ?? item.qualityStatus,
-                  }
+                  ...item,
+                  frameCuttingStatus:
+                    event.frameCuttingStatus ?? item.frameCuttingStatus,
+                  meshCuttingStatus:
+                    event.meshCuttingStatus ?? item.meshCuttingStatus,
+                  qualityStatus: event.qualityStatus ?? item.qualityStatus,
+                  packagingStatus: event.packagingStatus ?? item.packagingStatus,
+                  assemblyStatus: event.assemblyStatus ?? item.assemblyStatus,
+                }
                 : item
             ),
           };
@@ -120,8 +127,8 @@ export default function Page() {
         const utcDate = o.processedAt
           ? new Date(o.processedAt)
           : o.createdAt
-          ? new Date(o.createdAt)
-          : new Date();
+            ? new Date(o.createdAt)
+            : new Date();
 
         const mapped = {
           id: String(o._id || o.shopifyId || ""),
@@ -144,28 +151,29 @@ export default function Page() {
               id: String(li.id || li._id || `${o.shopifyId}-${idx + 1}`),
               width: parseFloat(
                 getProp(props, "Breedte in cm") ||
-                  getProp(props, "En") ||
-                  getProp(props, "Breite in cm") ||
-                  getProp(props, "Bredde i cm") ||
-                  getProp(props, "Largeur en cm") ||
-                  getProp(props, "Width in cm") ||
-                  "0"
+                getProp(props, "En") ||
+                getProp(props, "Breite in cm") ||
+                getProp(props, "Bredde i cm") ||
+                getProp(props, "Largeur en cm") ||
+                getProp(props, "Width in cm") ||
+                "0"
               ),
               height: parseFloat(
                 getProp(props, "Hoogte in cm") ||
-                  getProp(props, "Boy") ||
-                  getProp(props, "Höhe in cm") ||
-                  getProp(props, "Højde i cm") ||
-                  getProp(props, "Hauteur en cm") ||
-                  getProp(props, "Height in cm") ||
-                  "0"
+                getProp(props, "Boy") ||
+                getProp(props, "Höhe in cm") ||
+                getProp(props, "Højde i cm") ||
+                getProp(props, "Hauteur en cm") ||
+                getProp(props, "Height in cm") ||
+                "0"
               ),
-              profileColor:
+              profileColor: mapProfileColor(
                 getProp(props, "Profielkleur:") ||
                 getProp(props, "Profil renk") ||
                 getProp(props, "Profilfarbe") ||
                 getProp(props, "Ramme farve") ||
-                "-",
+                "-"
+              ),
               orientation:
                 getProp(props, "Schuifrichting") || getProp(props, "Yon") || "",
               installationType:
@@ -202,6 +210,8 @@ export default function Page() {
               meshCuttingStatus: (li.meshCuttingStatus ||
                 "Pending") as MeshCuttingStatus,
               qualityStatus: (li.qualityStatus || "Pending") as QualityStatus,
+              packagingStatus: (li.packagingStatus || "Pending") as PackagingStatus,
+              assemblyStatus: (li.assemblyStatus || "Pending") as AssemblyStatus,
               // Include product title and other useful info
               productTitle: li.title || li.name || "",
               quantity: li.quantity || 1,
@@ -209,8 +219,34 @@ export default function Page() {
             };
           }),
           boxes: o.boxes || [],
+          shippingStatus: o.shippingStatus || "Pending",
           raw: o,
+          shippingAddress: o.shippingAddress,
+          billingAddress: o.billingAddress,
+          customer: o.customer,
+          firstName:
+            o.customer?.firstName ||
+            o.customer?.first_name ||
+            o.billingAddress?.firstName ||
+            o.billingAddress?.first_name ||
+            o.shippingAddress?.firstName ||
+            o.shippingAddress?.first_name ||
+            "",
+          lastName:
+            o.customer?.lastName ||
+            o.customer?.last_name ||
+            o.billingAddress?.lastName ||
+            o.billingAddress?.last_name ||
+            o.shippingAddress?.lastName ||
+            o.shippingAddress?.last_name ||
+            "",
         };
+
+        console.log("Customer Data Debug:", {
+          customer: o.customer,
+          billing: o.billingAddress,
+          firstNameResolved: mapped.firstName
+        });
 
         console.log("Mapped order:", mapped);
         setOrder(mapped);
@@ -390,6 +426,72 @@ export default function Page() {
     }
   };
 
+  const handlePackagingStatusChange = async (
+    itemId: string,
+    newStatus: PackagingStatus
+  ) => {
+    // Optimistic update - update UI immediately
+    const previousStatus = order.items.find(
+      (it: any) => it.id === itemId
+    )?.packagingStatus;
+    setOrder((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.map((it: any) =>
+          it.id === itemId ? { ...it, packagingStatus: newStatus } : it
+        ),
+      };
+    });
+
+    // Persist to backend
+    try {
+      const response = await fetch(
+        `/api/orders/${params?.id}/items/${itemId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            packagingStatus: newStatus,
+            role: role,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update status");
+      }
+
+      const result = await response.json();
+      console.log("Packaging status update result:", result);
+
+      toast({
+        title: "Status Updated",
+        description: `Packaging status changed to ${newStatus}`,
+      });
+    } catch (error: any) {
+      console.error("Error updating packaging status:", error);
+
+      // Revert optimistic update on error
+      setOrder((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.map((it: any) =>
+            it.id === itemId ? { ...it, packagingStatus: previousStatus } : it
+          ),
+        };
+      });
+
+      toast({
+        title: "Failed to update status",
+        description: error?.message || "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleQualityStatusChange = async (
     itemId: string,
     newStatus: QualityStatus
@@ -451,6 +553,108 @@ export default function Page() {
       toast({
         title: "Failed to update status",
         description: error?.message || "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAssemblyStatusChange = async (
+    itemId: string,
+    newStatus: AssemblyStatus
+  ) => {
+    // Optimistic update - update UI immediately
+    const previousStatus = order.items.find(
+      (it: any) => it.id === itemId
+    )?.assemblyStatus;
+    setOrder((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.map((it: any) =>
+          it.id === itemId ? { ...it, assemblyStatus: newStatus } : it
+        ),
+      };
+    });
+
+    // Persist to backend
+    try {
+      const response = await fetch(
+        `/api/orders/${params?.id}/items/${itemId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            assemblyStatus: newStatus,
+            role: role,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update status");
+      }
+
+      const result = await response.json();
+      console.log("Assembly status update result:", result);
+
+      toast({
+        title: "Status Updated",
+        description: `Assembly status changed to ${newStatus}`,
+      });
+    } catch (error: any) {
+      console.error("Error updating assembly status:", error);
+
+      // Revert optimistic update on error
+      setOrder((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.map((it: any) =>
+            it.id === itemId ? { ...it, assemblyStatus: previousStatus } : it
+          ),
+        };
+      });
+
+      toast({
+        title: "Failed to update status",
+        description: error?.message || "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleShippingStatusChange = async (newStatus: "Pending" | "Complete") => {
+    // Optimistic update
+    const previousStatus = order.shippingStatus;
+    setOrder((prev: any) => {
+      if (!prev) return prev;
+      return { ...prev, shippingStatus: newStatus };
+    });
+
+    try {
+      const response = await fetch(`/api/orders/${params?.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shippingStatus: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update shipping status");
+      }
+
+      toast({
+        title: "Shipping Updated",
+        description: `Shipping status changed to ${newStatus}`,
+      });
+    } catch (error: any) {
+      setOrder((prev: any) => {
+        if (!prev) return prev;
+        return { ...prev, shippingStatus: previousStatus };
+      });
+      toast({
+        title: "Error",
+        description: error.message,
         variant: "destructive",
       });
     }
@@ -598,6 +802,26 @@ export default function Page() {
     return false;
   };
 
+  const canEditPackagingStatus = (item: any): boolean => {
+    if (role === "Admin") return true;
+    if (
+      role === "Packaging" &&
+      item.assemblyStatus === "Complete"
+    )
+      return true;
+    return false;
+  };
+
+  const canEditAssemblyStatus = (item: any): boolean => {
+    if (role === "Admin") return true;
+    if (
+      role === "Assembly" &&
+      item.qualityStatus === "Complete"
+    )
+      return true;
+    return false;
+  };
+
   const getFrameCuttingStatuses = (): FrameCuttingStatus[] => {
     return ["Pending", "Complete"];
   };
@@ -607,7 +831,15 @@ export default function Page() {
   };
 
   const getQualityStatuses = (): QualityStatus[] => {
-    return ["Pending", "Ready to Package", "Packed"];
+    return ["Pending", "Complete"];
+  };
+
+  const getPackagingStatuses = (): PackagingStatus[] => {
+    return ["Pending", "Complete"];
+  };
+
+  const getAssemblyStatuses = (): AssemblyStatus[] => {
+    return ["Pending", "Complete"];
   };
 
   return (
@@ -644,6 +876,28 @@ export default function Page() {
                 <p className="text-2xl font-bold">{order.orderNumber}</p>
               </div>
               <div>
+                <p className="text-sm text-muted-foreground">First Name</p>
+                <p className="text-lg font-semibold">
+                  {order.firstName ||
+                    order.customer?.firstName ||
+                    order.customer?.first_name ||
+                    order.billingAddress?.first_name ||
+                    order.raw?.customer?.firstName ||
+                    "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Last Name</p>
+                <p className="text-lg font-semibold">
+                  {order.lastName ||
+                    order.customer?.lastName ||
+                    order.customer?.last_name ||
+                    order.billingAddress?.last_name ||
+                    order.raw?.customer?.lastName ||
+                    "-"}
+                </p>
+              </div>
+              <div>
                 <p className="text-sm text-muted-foreground">Order Date</p>
                 <p className="text-lg font-semibold">
                   {format(order.orderDate, "dd/MM/yyyy")}
@@ -661,6 +915,23 @@ export default function Page() {
                   {order.items.length} item{order.items.length !== 1 ? "s" : ""}
                 </p>
               </div>
+              {role === "Admin" && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Shipping Status</p>
+                  <Select
+                    value={order.shippingStatus || "Pending"}
+                    onValueChange={handleShippingStatusChange}
+                  >
+                    <SelectTrigger className="w-[140px] mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="Complete">Complete</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -766,6 +1037,64 @@ export default function Page() {
                       </Select>
                     </div>
                   )}
+
+                  {(role === "Assembly" || role === "Admin") && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        Assembly:
+                      </span>
+                      <Select
+                        value={item.assemblyStatus}
+                        onValueChange={(value) =>
+                          handleAssemblyStatusChange(
+                            item.id,
+                            value as AssemblyStatus
+                          )
+                        }
+                        disabled={!canEditAssemblyStatus(item)}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getAssemblyStatuses().map((status) => (
+                            <SelectItem key={status} value={status}>
+                              {status}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {(role === "Packaging" || role === "Admin") && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        Packaging:
+                      </span>
+                      <Select
+                        value={item.packagingStatus}
+                        onValueChange={(value) =>
+                          handlePackagingStatusChange(
+                            item.id,
+                            value as PackagingStatus
+                          )
+                        }
+                        disabled={!canEditPackagingStatus(item)}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getPackagingStatuses().map((status) => (
+                            <SelectItem key={status} value={status}>
+                              {status}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -793,6 +1122,22 @@ export default function Page() {
                 />
               )}
 
+              {role === "Assembly" && (
+                <AssembleView
+                  item={item}
+                  store={order.store}
+                  itemNumber={index + 1}
+                />
+              )}
+
+              {role === "Packaging" && (
+                <PackagingView
+                  item={item}
+                  store={order.store}
+                  itemNumber={index + 1}
+                />
+              )}
+
               {role === "Admin" && (
                 <>
                   <SawingView
@@ -810,13 +1155,24 @@ export default function Page() {
                     store={order.store}
                     itemNumber={index + 1}
                   />
+                  <AssembleView
+                    item={item}
+                    store={order.store}
+                    itemNumber={index + 1}
+                    showReferences={false}
+                  />
+                  <PackagingView
+                    item={item}
+                    store={order.store}
+                    itemNumber={index + 1}
+                  />
                 </>
               )}
             </div>
           ))}
         </div>
 
-        {(role === "Quality" || role === "Admin") && (
+        {(role === "Packaging" || role === "Admin") && (
           <BoxManagement
             order={order}
             onAddBox={handleAddBox}

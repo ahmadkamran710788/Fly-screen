@@ -51,7 +51,17 @@ const OrderSchema = new Schema(
         },
         qualityStatus: {
           type: String,
-          enum: ["Pending", "Ready to Package", "Packed"],
+          enum: ["Pending", "Complete"],
+          default: "Pending",
+        },
+        packagingStatus: {
+          type: String,
+          enum: ["Pending", "Complete"],
+          default: "Pending",
+        },
+        assemblyStatus: {
+          type: String,
+          enum: ["Pending", "Complete"],
           default: "Pending",
         },
       },
@@ -73,6 +83,11 @@ const OrderSchema = new Schema(
     processedAt: Date,
     cancelledAt: Date,
     closedAt: Date,
+    shippingStatus: {
+      type: String,
+      enum: ["Pending", "Complete"],
+      default: "Pending",
+    },
   },
   { timestamps: true }
 );
@@ -80,15 +95,24 @@ const OrderSchema = new Schema(
 // Middleware to automatically calculate and update order status based on line items
 OrderSchema.pre("save", function (next) {
   if (this.lineItems && this.lineItems.length > 0) {
-    // Check if all items have qualityStatus === "Packed"
-    const allPacked = this.lineItems.every((item) => item.qualityStatus === "Packed");
+    // Check if all items are completely finished (all statuses are Complete)
+    const allPacked = this.lineItems.every(
+      (item) =>
+        item.frameCuttingStatus === "Complete" &&
+        item.meshCuttingStatus === "Complete" &&
+        item.qualityStatus === "Complete" &&
+        item.assemblyStatus === "Complete" &&
+        item.packagingStatus === "Complete"
+    );
 
-    // Check if all items are still pending (all 3 statuses are pending)
+    // Check if all items are still pending (all statuses are pending)
     const allPending = this.lineItems.every(
       (item) =>
         item.frameCuttingStatus === "Pending" &&
         item.meshCuttingStatus === "Pending" &&
-        item.qualityStatus === "Pending"
+        item.qualityStatus === "Pending" &&
+        item.assemblyStatus === "Pending" &&
+        item.packagingStatus === "Pending"
     );
 
     // Update the order status accordingly
@@ -109,15 +133,24 @@ OrderSchema.pre("findOneAndUpdate", async function (next) {
 
   // Only proceed if lineItems are being updated
   if (update && update.lineItems && update.lineItems.length > 0) {
-    // Check if all items have qualityStatus === "Packed"
-    const allPacked = update.lineItems.every((item: any) => item.qualityStatus === "Packed");
+    // Check if all items are completely finished (all statuses are Complete)
+    const allPacked = update.lineItems.every(
+      (item: any) =>
+        item.frameCuttingStatus === "Complete" &&
+        item.meshCuttingStatus === "Complete" &&
+        item.qualityStatus === "Complete" &&
+        item.assemblyStatus === "Complete" &&
+        item.packagingStatus === "Complete"
+    );
 
-    // Check if all items are still pending (all 3 statuses are pending)
+    // Check if all items are still pending (all statuses are pending)
     const allPending = update.lineItems.every(
       (item: any) =>
         item.frameCuttingStatus === "Pending" &&
         item.meshCuttingStatus === "Pending" &&
-        item.qualityStatus === "Pending"
+        item.qualityStatus === "Pending" &&
+        item.assemblyStatus === "Pending" &&
+        item.packagingStatus === "Pending"
     );
 
     // Update the order status accordingly
@@ -139,6 +172,11 @@ OrderSchema.index({ status: 1, createdAt: -1 }); // For filtering by status + so
 OrderSchema.index({ storeKey: 1, createdAt: -1 }); // For filtering by store + sorting
 
 export type Order = InferSchemaType<typeof OrderSchema>;
+
+// In development, delete the model from cache to ensure schema changes are picked up
+if (process.env.NODE_ENV === "development") {
+  delete mongoose.models.Order;
+}
 
 export const OrderModel: Model<Order> =
   mongoose.models.Order || mongoose.model<Order>("Order", OrderSchema);

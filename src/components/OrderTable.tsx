@@ -86,17 +86,24 @@ const OrderTable = ({ orders }: OrderTableProps) => {
   };
 
   const getOverallStatus = (order: Order) => {
-    // Check if all items have qualityStatus === "Packed"
+    // Check if all items are completely finished (all 5 stages are Complete)
     const allPacked = order.items?.every(
-      (item) => item.qualityStatus === "Packed"
+      (item) =>
+        item.frameCuttingStatus === "Complete" &&
+        item.meshCuttingStatus === "Complete" &&
+        item.qualityStatus === "Complete" &&
+        item.assemblyStatus === "Complete" &&
+        item.packagingStatus === "Complete"
     );
 
-    // Check if all items are still pending (all 3 statuses are pending)
+    // Check if all items are still pending (all 5 statuses are pending)
     const allPending = order.items?.every(
       (item) =>
         item.frameCuttingStatus === "Pending" &&
         item.meshCuttingStatus === "Pending" &&
-        item.qualityStatus === "Pending"
+        item.qualityStatus === "Pending" &&
+        item.assemblyStatus === "Pending" &&
+        item.packagingStatus === "Pending"
     );
 
     if (allPacked) return { text: "Completed", variant: "default" as const };
@@ -110,6 +117,7 @@ const OrderTable = ({ orders }: OrderTableProps) => {
         <TableHeader>
           <TableRow>
             <TableHead>Order Number</TableHead>
+            <TableHead>Name</TableHead>
             <TableHead>Order Date</TableHead>
             <TableHead>Delivery Date</TableHead>
             <TableHead>Store</TableHead>
@@ -123,7 +131,7 @@ const OrderTable = ({ orders }: OrderTableProps) => {
           {orders.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={8}
+                colSpan={9}
                 className="text-center py-8 text-muted-foreground"
               >
                 No orders found
@@ -134,18 +142,22 @@ const OrderTable = ({ orders }: OrderTableProps) => {
               const status = getOverallStatus(order);
               const orderDate = new Date(
                 (order as any).orderDate ??
-                  (order as any).createdAt ??
-                  Date.now()
+                (order as any).createdAt ??
+                Date.now()
               );
               const deliveryDate = getDeadline(orderDate);
               const deadline = getDeadlineStatus(orderDate);
               const itemCount =
                 order.items?.length ?? (order as any).lineItems?.length ?? 0;
+              const customerName = [order.firstName, order.lastName].filter(Boolean).join(" ") || String((order as any).customer?.firstName || (order as any).customer?.first_name || (order as any).shippingAddress?.first_name || "-") + " " + String((order as any).customer?.lastName || (order as any).customer?.last_name || (order as any).shippingAddress?.last_name || "");
 
               return (
                 <TableRow key={order.id} className="hover:bg-muted/30">
                   <TableCell className="font-medium">
                     {order.orderNumber}
+                  </TableCell>
+                  <TableCell>
+                    {customerName.trim() === "-" ? "-" : customerName}
                   </TableCell>
                   <TableCell>{formatDateGMT1(orderDate)}</TableCell>
                   <TableCell>{formatDateGMT1(deliveryDate)}</TableCell>

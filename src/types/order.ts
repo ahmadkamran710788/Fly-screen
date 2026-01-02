@@ -1,11 +1,13 @@
 export type Store = '.nl' | '.de' | '.dk' | '.fr' | '.uk';
 
-export type Role = 'Admin' | 'Frame Cutting' | 'Mesh Cutting' | 'Quality';
+export type Role = 'Admin' | 'Frame Cutting' | 'Mesh Cutting' | 'Quality' | 'Packaging' | 'Assembly';
 
 // New: Separate status types for each stage
 export type FrameCuttingStatus = 'Pending' | 'Complete';
 export type MeshCuttingStatus = 'Pending' | 'Complete';
-export type QualityStatus = 'Pending' | 'Ready to Package' | 'Packed';
+export type QualityStatus = 'Pending' | 'Complete';
+export type PackagingStatus = 'Pending' | 'Complete';
+export type AssemblyStatus = 'Pending' | 'Complete';
 
 // Overall order status
 export type OrderStatus = 'Pending' | 'In Progress' | 'Completed';
@@ -23,10 +25,12 @@ export interface OrderItem {
   fabricColor: string;
   closureType: string; // store-specific language
   mountingType: string; // store-specific language
-  // New: Three separate statuses per item
+  // New: Separate statuses per item
   frameCuttingStatus: FrameCuttingStatus;
   meshCuttingStatus: MeshCuttingStatus;
   qualityStatus: QualityStatus;
+  packagingStatus: PackagingStatus;
+  assemblyStatus: AssemblyStatus;
 }
 
 export interface Box {
@@ -45,4 +49,7 @@ export interface Order {
   store: Store;
   items: OrderItem[];
   boxes: Box[];
+  shippingStatus?: 'Pending' | 'Complete';
+  firstName?: string;
+  lastName?: string;
 }

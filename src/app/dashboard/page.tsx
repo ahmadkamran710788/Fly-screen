@@ -146,8 +146,25 @@ export default function Page() {
               frameCuttingStatus: li.frameCuttingStatus || "Pending",
               meshCuttingStatus: li.meshCuttingStatus || "Pending",
               qualityStatus: li.qualityStatus || "Pending",
+              packagingStatus: li.packagingStatus || "Pending",
             })),
             boxes: [],
+            firstName:
+              o.customer?.firstName ||
+              o.customer?.first_name ||
+              o.billingAddress?.firstName ||
+              o.billingAddress?.first_name ||
+              o.shippingAddress?.firstName ||
+              o.shippingAddress?.first_name ||
+              "",
+            lastName:
+              o.customer?.lastName ||
+              o.customer?.last_name ||
+              o.billingAddress?.lastName ||
+              o.billingAddress?.last_name ||
+              o.shippingAddress?.lastName ||
+              o.shippingAddress?.last_name ||
+              "",
           };
         });
 
@@ -262,9 +279,8 @@ export default function Page() {
 
       toast({
         title: "Export Successful",
-        description: `Exported ${
-          mappedOrders.length
-        } orders to ${format.toUpperCase()} successfully.`,
+        description: `Exported ${mappedOrders.length
+          } orders to ${format.toUpperCase()} successfully.`,
       });
     } catch (error) {
       console.error("Export error:", error);

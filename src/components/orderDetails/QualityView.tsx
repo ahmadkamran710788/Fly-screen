@@ -1,7 +1,7 @@
 import { OrderItem, Store } from '@/types/order';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { mapToTurkish, extractColorCode } from '@/lib/mappings';
+import { mapToTurkish, extractColorCode, mapProfileColor } from '@/lib/mappings';
 
 interface QualityViewProps {
   item: OrderItem;
@@ -13,7 +13,7 @@ const QualityView = ({ item, store, itemNumber }: QualityViewProps) => {
   const fields = {
     en: item.width, // NO deduction
     boy: item.height, // NO deduction
-    profilRenk: extractColorCode(item.profileColor),
+    profilRenk: mapProfileColor(item.profileColor),
     yon: mapToTurkish(item.orientation, store, 'orientation'),
     kurulum: mapToTurkish(item.installationType, store, 'installation'),
     esik: mapToTurkish(item.thresholdType, store, 'threshold'),
@@ -28,7 +28,7 @@ const QualityView = ({ item, store, itemNumber }: QualityViewProps) => {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Item {itemNumber} - Quality & Packaging</span>
+          <span>Item {itemNumber} - Quality</span>
           <div className="flex gap-2">
             <Badge variant={item.frameCuttingStatus === 'Complete' ? 'default' : 'secondary'}>
               Frame: {item.frameCuttingStatus}
@@ -36,7 +36,7 @@ const QualityView = ({ item, store, itemNumber }: QualityViewProps) => {
             <Badge variant={item.meshCuttingStatus === 'Complete' ? 'default' : 'secondary'}>
               Mesh: {item.meshCuttingStatus}
             </Badge>
-            <Badge variant={item.qualityStatus === 'Packed' ? 'default' : 'secondary'}>
+            <Badge variant={item.qualityStatus === 'Complete' ? 'default' : 'secondary'}>
               Quality: {item.qualityStatus}
             </Badge>
           </div>
@@ -64,7 +64,14 @@ const QualityView = ({ item, store, itemNumber }: QualityViewProps) => {
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Kurulum</p>
-            <p className="text-lg font-semibold">{fields.kurulum}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-lg font-semibold">{fields.kurulum}</p>
+              {fields.kurulum === "Cerceve ici" && (
+                <Badge variant="destructive" className="animate-pulse">
+                  EKSTRA KONTROL
+                </Badge>
+              )}
+            </div>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Esik</p>

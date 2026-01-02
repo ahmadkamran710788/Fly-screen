@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Plus, Package, Trash2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { mapToTurkish } from "@/lib/mappings";
 
 interface BoxManagementProps {
   order: Order;
@@ -256,228 +257,237 @@ const BoxManagement = ({
           <CardTitle className="flex items-center justify-between">
             <span>Package Information</span>
             <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Box
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Add New Box</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="length">Length (cm)*</Label>
-                    <Input
-                      id="length"
-                      type="number"
-                      min="1"
-                      max="1000"
-                      step="1"
-                      value={formData.length}
-                      onChange={(e) =>
-                        handleFieldChange("length", e.target.value)
-                      }
-                      onBlur={() => handleFieldBlur("length")}
-                      placeholder="120"
-                      className={
-                        errors.length
-                          ? "border-red-500 focus-visible:ring-red-500"
-                          : ""
-                      }
-                    />
-                    {errors.length && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {errors.length}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="width">Width (cm)*</Label>
-                    <Input
-                      id="width"
-                      type="number"
-                      min="1"
-                      max="1000"
-                      step="1"
-                      value={formData.width}
-                      onChange={(e) =>
-                        handleFieldChange("width", e.target.value)
-                      }
-                      onBlur={() => handleFieldBlur("width")}
-                      placeholder="80"
-                      className={
-                        errors.width
-                          ? "border-red-500 focus-visible:ring-red-500"
-                          : ""
-                      }
-                    />
-                    {errors.width && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {errors.width}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="height">Height (cm)*</Label>
-                    <Input
-                      id="height"
-                      type="number"
-                      min="1"
-                      max="1000"
-                      step="1"
-                      value={formData.height}
-                      onChange={(e) =>
-                        handleFieldChange("height", e.target.value)
-                      }
-                      onBlur={() => handleFieldBlur("height")}
-                      placeholder="10"
-                      className={
-                        errors.height
-                          ? "border-red-500 focus-visible:ring-red-500"
-                          : ""
-                      }
-                    />
-                    {errors.height && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {errors.height}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="weight">Weight (kg)</Label>
-                    <Input
-                      id="weight"
-                      type="number"
-                      min="0.1"
-                      max="10000"
-                      step="0.1"
-                      value={formData.weight}
-                      onChange={(e) =>
-                        handleFieldChange("weight", e.target.value)
-                      }
-                      onBlur={() => handleFieldBlur("weight")}
-                      placeholder="5"
-                      className={
-                        errors.weight
-                          ? "border-red-500 focus-visible:ring-red-500"
-                          : ""
-                      }
-                    />
-                    {errors.weight && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {errors.weight}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className={errors.items ? "text-red-500" : ""}>
-                    Items in this box
-                  </Label>
-                  <div
-                    className={`space-y-2 ${
-                      errors.items ? "border border-red-500 rounded-md p-3" : ""
-                    }`}
-                  >
-                    {order.items.map((item, index) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center space-x-2"
-                      >
-                        <Checkbox
-                          id={`item-${item.id}`}
-                          checked={formData.items.includes(item.id)}
-                          onCheckedChange={() => toggleItem(item.id)}
-                        />
-                        <label
-                          htmlFor={`item-${item.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          Item {index + 1} ({item.width}cm x {item.height}cm)
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                  {errors.items && (
-                    <p className="text-xs text-red-500 mt-1">{errors.items}</p>
-                  )}
-                </div>
-
-                <Button onClick={handleSubmit} className="w-full">
-                  Save Box
+              <DialogTrigger asChild>
+                <Button size="sm" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Box
                 </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {order.boxes.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p>No boxes added yet</p>
-            <p className="text-sm">Click "Add Box" to create a package</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {order.boxes.map((box, index) => {
-              const itemNames = box.items
-                .map((itemId) => {
-                  const itemIndex = order.items.findIndex(
-                    (item) => item.id === itemId
-                  );
-                  return `Item ${itemIndex + 1}`;
-                })
-                .join(", ");
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Add New Box</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="length">Length (cm)*</Label>
+                      <Input
+                        id="length"
+                        type="number"
+                        min="1"
+                        max="1000"
+                        step="1"
+                        value={formData.length}
+                        onChange={(e) =>
+                          handleFieldChange("length", e.target.value)
+                        }
+                        onBlur={() => handleFieldBlur("length")}
+                        placeholder="120"
+                        className={
+                          errors.length
+                            ? "border-red-500 focus-visible:ring-red-500"
+                            : ""
+                        }
+                      />
+                      {errors.length && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {errors.length}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="width">Width (cm)*</Label>
+                      <Input
+                        id="width"
+                        type="number"
+                        min="1"
+                        max="1000"
+                        step="1"
+                        value={formData.width}
+                        onChange={(e) =>
+                          handleFieldChange("width", e.target.value)
+                        }
+                        onBlur={() => handleFieldBlur("width")}
+                        placeholder="80"
+                        className={
+                          errors.width
+                            ? "border-red-500 focus-visible:ring-red-500"
+                            : ""
+                        }
+                      />
+                      {errors.width && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {errors.width}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="height">Height (cm)*</Label>
+                      <Input
+                        id="height"
+                        type="number"
+                        min="1"
+                        max="1000"
+                        step="1"
+                        value={formData.height}
+                        onChange={(e) =>
+                          handleFieldChange("height", e.target.value)
+                        }
+                        onBlur={() => handleFieldBlur("height")}
+                        placeholder="10"
+                        className={
+                          errors.height
+                            ? "border-red-500 focus-visible:ring-red-500"
+                            : ""
+                        }
+                      />
+                      {errors.height && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {errors.height}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="weight">Weight (kg)</Label>
+                      <Input
+                        id="weight"
+                        type="number"
+                        min="0.1"
+                        max="10000"
+                        step="0.1"
+                        value={formData.weight}
+                        onChange={(e) =>
+                          handleFieldChange("weight", e.target.value)
+                        }
+                        onBlur={() => handleFieldBlur("weight")}
+                        placeholder="5"
+                        className={
+                          errors.weight
+                            ? "border-red-500 focus-visible:ring-red-500"
+                            : ""
+                        }
+                      />
+                      {errors.weight && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {errors.weight}
+                        </p>
+                      )}
+                    </div>
+                  </div>
 
-              return (
-                <div
-                  key={box.id}
-                  className="border border-border rounded-lg p-4"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-semibold mb-2">Box {index + 1}</h4>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">
-                            Dimensions:
-                          </span>{" "}
-                          {box.length}cm x {box.width}cm x {box.height}cm
+                  <div className="space-y-2">
+                    <Label htmlFor="montaj">Montaj</Label>
+                    <Input
+                      id="montaj"
+                      value={order.items[0] ? mapToTurkish(order.items[0].mountingType, order.store, "mounting") : ""}
+                      disabled
+                      className="bg-muted opacity-100 cursor-not-allowed border-black"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className={errors.items ? "text-red-500" : ""}>
+                      Items in this box
+                    </Label>
+                    <div
+                      className={`space-y-2 ${errors.items ? "border border-red-500 rounded-md p-3" : ""
+                        }`}
+                    >
+                      {order.items.map((item, index) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center space-x-2"
+                        >
+                          <Checkbox
+                            id={`item-${item.id}`}
+                            checked={formData.items.includes(item.id)}
+                            onCheckedChange={() => toggleItem(item.id)}
+                          />
+                          <label
+                            htmlFor={`item-${item.id}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            Item {index + 1} ({item.width}cm x {item.height}cm)
+                          </label>
                         </div>
-                        <div>
-                          <span className="text-muted-foreground">Weight:</span>{" "}
-                          {box.weight}kg
-                        </div>
-                        <div className="col-span-2">
-                          <span className="text-muted-foreground">
-                            Contains:
-                          </span>{" "}
-                          {itemNames}
+                      ))}
+                    </div>
+                    {errors.items && (
+                      <p className="text-xs text-red-500 mt-1">{errors.items}</p>
+                    )}
+                  </div>
+
+                  <Button onClick={handleSubmit} className="w-full">
+                    Save Box
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {order.boxes.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>No boxes added yet</p>
+              <p className="text-sm">Click "Add Box" to create a package</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {order.boxes.map((box, index) => {
+                const itemNames = box.items
+                  .map((itemId) => {
+                    const itemIndex = order.items.findIndex(
+                      (item) => item.id === itemId
+                    );
+                    return `Item ${itemIndex + 1}`;
+                  })
+                  .join(", ");
+
+                return (
+                  <div
+                    key={box.id}
+                    className="border border-border rounded-lg p-4"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-semibold mb-2">Box {index + 1}</h4>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">
+                              Dimensions:
+                            </span>{" "}
+                            {box.length}cm x {box.width}cm x {box.height}cm
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Weight:</span>{" "}
+                            {box.weight}kg
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-muted-foreground">
+                              Contains:
+                            </span>{" "}
+                            {itemNames}
+                          </div>
                         </div>
                       </div>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() =>
+                          handleDeleteClick(box.id, `Box ${index + 1}`)
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() =>
-                        handleDeleteClick(box.id, `Box ${index + 1}`)
-                      }
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </>
   );
 };

@@ -69,6 +69,18 @@ export const extractColorCode = (profileColor: string): string => {
   return match ? match[0] : profileColor;
 };
 
+// Helper function to map profile color code to Turkish
+export const mapProfileColor = (profileColor: string): string => {
+  const code = extractColorCode(profileColor);
+  const colorMap: Record<string, string> = {
+    '9016': 'Beyaz',
+    '7016': 'Antrasit',
+    '9005': 'Siyah',
+    '8014': 'Kahve',
+  };
+  return colorMap[code] || profileColor;
+};
+
 // Helper function to map any field to Turkish
 export const mapToTurkish = (
   value: string,
@@ -84,6 +96,6 @@ export const mapToTurkish = (
     closure: closureTypeMap,
     mounting: mountingTypeMap,
   };
-  
+
   return maps[mapType][store]?.[value] || value;
 };

@@ -1,7 +1,7 @@
 import { OrderItem, Store } from '@/types/order';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { mapToTurkish, extractColorCode } from '@/lib/mappings';
+import { mapToTurkish, extractColorCode, mapProfileColor } from '@/lib/mappings';
 
 interface SawingViewProps {
   item: OrderItem;
@@ -14,7 +14,7 @@ const SawingView = ({ item, store, itemNumber }: SawingViewProps) => {
   const isDikey = yon === 'Dikey' || yon === 'DIKEY';
   const esik = mapToTurkish(item.thresholdType, store, 'threshold');
   const isFlat = esik === '9 mm'; // Flat threshold maps to '9 mm' in Turkish
-  
+
   // If YON = DIKEY, switch En with Boy
   // If thresholdType is Flat:
   // - Add separate value: Width - 3.4 cm (not linked to En/Boy)
@@ -26,7 +26,7 @@ const SawingView = ({ item, store, itemNumber }: SawingViewProps) => {
     boy: isDikey ? item.width - 7 : item.height - 7,
     kanat: isFlat ? item.height - 4.9 : item.height - 7.7,
     flatValue: isFlat ? item.width - 3.4 : null, // Width - 3.4 cm when Flat
-    profilRenk: extractColorCode(item.profileColor),
+    profilRenk: mapProfileColor(item.profileColor),
     yon: yon,
     kurulum: mapToTurkish(item.installationType, store, 'installation'),
     esik: esik,

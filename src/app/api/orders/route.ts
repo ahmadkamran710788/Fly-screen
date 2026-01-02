@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { orderNumber, orderDate, store, items } = body;
+    const { orderNumber, orderDate, store, items, firstName, lastName } = body;
 
     // Validate required fields
     if (
@@ -163,6 +163,11 @@ export async function POST(req: NextRequest) {
       shopifyId: `manual-${Date.now()}`,
       name: `#${orderNumber}`,
       email: "manual@order.com",
+      customer: {
+        firstName: firstName || "",
+        lastName: lastName || "",
+        email: "manual@order.com",
+      },
       phone: "",
       note: "Manually created order",
       financialStatus: "paid",
@@ -419,7 +424,7 @@ export async function GET(req: NextRequest) {
     // Use lean() for better performance and add index hints
     const queryPromise = OrderModel.find(filterQuery)
       .select(
-        "orderNumber shopifyId status storeKey lineItems total createdAt processedAt name raw boxes"
+        "orderNumber shopifyId status storeKey lineItems total createdAt processedAt name raw boxes customer"
       )
       .sort(sortOptions)
       .skip(skip)

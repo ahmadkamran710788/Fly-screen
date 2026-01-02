@@ -16,18 +16,25 @@ function calculateOrderStatus(
 ): "Pending" | "In Progress" | "Completed" {
   if (!lineItems || lineItems.length === 0) return "Pending";
 
-  // Check if all items are packed
+  // Check if all items are finished (all 5 statuses are Complete)
   const allPacked = lineItems.every(
-    (item) => item.qualityStatus === "Packed"
+    (item) =>
+      item.frameCuttingStatus === "Complete" &&
+      item.meshCuttingStatus === "Complete" &&
+      item.qualityStatus === "Complete" &&
+      item.assemblyStatus === "Complete" &&
+      item.packagingStatus === "Complete"
   );
   if (allPacked) return "Completed";
 
-  // Check if all items are still pending (all 3 statuses are pending)
+  // Check if all items are still pending (all 5 statuses are Pending)
   const allPending = lineItems.every(
     (item) =>
       item.frameCuttingStatus === "Pending" &&
       item.meshCuttingStatus === "Pending" &&
-      item.qualityStatus === "Pending"
+      item.qualityStatus === "Pending" &&
+      item.assemblyStatus === "Pending" &&
+      item.packagingStatus === "Pending"
   );
   if (allPending) return "Pending";
 
@@ -48,7 +55,7 @@ export async function PATCH(
     await connectToDatabase();
 
     const body = await req.json();
-    const { frameCuttingStatus, meshCuttingStatus, qualityStatus, role } = body;
+    const { frameCuttingStatus, meshCuttingStatus, qualityStatus, assemblyStatus, packagingStatus, role } = body;
 
     // Find the order
     const order = await OrderModel.findById(id);
@@ -71,36 +78,36 @@ export async function PATCH(
     const isAdmin = user.role === "Admin" || role === "Admin";
 
     if (!isAdmin) {
-      // Validation: Check if Quality status is "Packed"
-      // If packed, Frame Cutting and Mesh Cutting cannot change their statuses
-      if (item.qualityStatus === "Packed") {
-        if (frameCuttingStatus !== undefined || meshCuttingStatus !== undefined) {
+      // Validation: Quality status can only be Complete if Frame and Mesh are Complete
+      if (qualityStatus === "Complete") {
+        const currentFrameStatus = frameCuttingStatus ?? item.frameCuttingStatus;
+        const currentMeshStatus = meshCuttingStatus ?? item.meshCuttingStatus;
+
+        if (currentFrameStatus !== "Complete" || currentMeshStatus !== "Complete") {
           return NextResponse.json(
-            {
-              error:
-                "Cannot change Frame or Mesh status when item is already Packed",
-            },
+            { error: "Quality can only be completed when both Frame and Mesh are Complete" },
             { status: 400 }
           );
         }
       }
 
-      // Validation: Quality can only change status if both Frame and Mesh are "Complete"
-      if (qualityStatus !== undefined && qualityStatus !== "Pending") {
-        const currentFrameStatus =
-          frameCuttingStatus ?? item.frameCuttingStatus ?? "Pending";
-        const currentMeshStatus =
-          meshCuttingStatus ?? item.meshCuttingStatus ?? "Pending";
-
-        if (
-          currentFrameStatus !== "Complete" ||
-          currentMeshStatus !== "Complete"
-        ) {
+      // Validation: Assembly status can only be Complete if Quality is Complete
+      if (assemblyStatus === "Complete") {
+        const currentQualityStatus = qualityStatus ?? item.qualityStatus;
+        if (currentQualityStatus !== "Complete") {
           return NextResponse.json(
-            {
-              error:
-                "Quality status can only be changed when both Frame and Mesh cutting are Complete",
-            },
+            { error: "Assembly can only be completed when Quality is Complete" },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Validation: Packaging status can only be Complete if Assembly is Complete
+      if (packagingStatus === "Complete") {
+        const currentAssemblyStatus = assemblyStatus ?? item.assemblyStatus;
+        if (currentAssemblyStatus !== "Complete") {
+          return NextResponse.json(
+            { error: "Packaging can only be completed when Assembly is Complete" },
             { status: 400 }
           );
         }
@@ -117,6 +124,12 @@ export async function PATCH(
     if (qualityStatus !== undefined) {
       order.lineItems[itemIndex].qualityStatus = qualityStatus;
     }
+    if (assemblyStatus !== undefined) {
+      order.lineItems[itemIndex].assemblyStatus = assemblyStatus;
+    }
+    if (packagingStatus !== undefined) {
+      order.lineItems[itemIndex].packagingStatus = packagingStatus;
+    }
 
     // Calculate and update overall order status
     order.status = calculateOrderStatus(order.lineItems);
@@ -132,6 +145,8 @@ export async function PATCH(
       frameCuttingStatus: order.lineItems[itemIndex].frameCuttingStatus,
       meshCuttingStatus: order.lineItems[itemIndex].meshCuttingStatus,
       qualityStatus: order.lineItems[itemIndex].qualityStatus,
+      assemblyStatus: order.lineItems[itemIndex].assemblyStatus,
+      packagingStatus: order.lineItems[itemIndex].packagingStatus,
       orderStatus: order.status,
       timestamp: new Date().toISOString(),
     });

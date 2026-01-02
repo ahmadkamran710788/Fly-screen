@@ -26,6 +26,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -54,7 +64,7 @@ const ROLES = [
 ];
 
 export default function UsersPage() {
-  const { role } = useAuth();
+  const { role, user: currentUser } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -67,6 +77,8 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [addUserOpen, setAddUserOpen] = useState(false);
   const [editUserOpen, setEditUserOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   // Redirect if not admin
@@ -112,8 +124,6 @@ export default function UsersPage() {
   };
 
   const handleDelete = async (userId: string) => {
-    if (!confirm("Are you sure you want to delete this user?")) return;
-
     try {
       const response = await fetch(`/api/users/${userId}`, {
         method: "DELETE",
@@ -137,6 +147,11 @@ export default function UsersPage() {
         variant: "destructive",
       });
     }
+  };
+
+  const confirmDelete = (userId: string) => {
+    setUserToDelete(userId);
+    setDeleteDialogOpen(true);
   };
 
   const handleEdit = (user: User) => {
@@ -251,15 +266,17 @@ export default function UsersPage() {
                               <Edit className="h-4 w-4" />
                               Edit
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(user._id)}
-                              className="gap-2 text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Delete
-                            </Button>
+                            {currentUser && String(currentUser.id) !== String(user._id) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => confirmDelete(user._id)}
+                                className="gap-2 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -323,6 +340,35 @@ export default function UsersPage() {
         }}
         user={selectedUser}
       />
+
+      {/* Delete Confirmation Modal */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the user
+              account and remove their data from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setUserToDelete(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (userToDelete) {
+                  handleDelete(userToDelete);
+                  setUserToDelete(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
