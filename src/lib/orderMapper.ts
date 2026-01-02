@@ -66,7 +66,7 @@ export const mapOrder = (o: any): Order => {
           "-"
         ),
         orientation:
-          getProp(props, "Schuifrichting") || getProp(props, "Yon") || "",
+          getProp(props, "Schuifrichting") || getProp(props, "Yon") || "YATAY",
         installationType:
           getProp(props, "Plaatsing") ||
           getProp(props, "Kurulum") ||

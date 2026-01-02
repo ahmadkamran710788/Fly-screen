@@ -179,7 +179,7 @@ export default function Page() {
                 "-"
               ),
               orientation:
-                getProp(props, "Schuifrichting") || getProp(props, "Yon") || "",
+                getProp(props, "Schuifrichting") || getProp(props, "Yon") || "YATAY",
               installationType:
                 getProp(props, "Plaatsing") ||
                 getProp(props, "Kurulum") ||
