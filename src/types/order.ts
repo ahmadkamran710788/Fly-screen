@@ -1,6 +1,6 @@
 export type Store = '.nl' | '.de' | '.dk' | '.fr' | '.uk';
 
-export type Role = 'Admin' | 'Frame Cutting' | 'Mesh Cutting' | 'Quality' | 'Packaging' | 'Assembly';
+export type Role = 'Admin' | 'Frame Cutting' | 'Mesh Cutting' | 'Quality' | 'Packaging' | 'Assembly' | 'Shipping';
 
 // New: Separate status types for each stage
 export type FrameCuttingStatus = 'Pending' | 'Complete';
