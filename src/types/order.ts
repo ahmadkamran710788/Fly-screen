@@ -10,7 +10,7 @@ export type PackagingStatus = 'Pending' | 'Complete';
 export type AssemblyStatus = 'Pending' | 'Complete';
 
 // Overall order status
-export type OrderStatus = 'Pending' | 'In Progress' | 'Completed';
+export type OrderStatus = 'Pending' | 'In Progress' | 'Completed' | 'In Transit';
 
 export interface OrderItem {
   id: string;
@@ -52,4 +52,6 @@ export interface Order {
   shippingStatus?: 'Pending' | 'Packed' | 'In Transit';
   firstName?: string;
   lastName?: string;
+  totalWeight?: number;
+  status?: OrderStatus;
 }

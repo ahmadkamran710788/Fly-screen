@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Eye } from "lucide-react";
 import { formatDateGMT1 } from "@/lib/timezone";
+import { useTranslation } from "@/contexts/TranslationContext";
 
 interface OrderTableProps {
   orders: Order[];
@@ -24,6 +25,7 @@ interface OrderTableProps {
 // Date is already in GMT+1 from the dashboard mapping (isAlreadyGMT1 = true)
 
 const OrderTable = ({ orders, role }: OrderTableProps) => {
+  const { t } = useTranslation();
   const getDeadline = (orderDate: Date) => {
     const deadline = new Date(orderDate);
     deadline.setDate(deadline.getDate() + 3); // Add 3 days to order date
@@ -93,8 +95,19 @@ const OrderTable = ({ orders, role }: OrderTableProps) => {
   };
 
   const getOverallStatus = (order: Order) => {
+    // Priority 1: Use the status field from the database if it exists
+    // This ensures consistency between what the user filters and what they see
+    if (order.status) {
+      const s = order.status;
+      if (s === "In Transit") return { text: "In Transit", variant: "default" as const };
+      if (s === "Completed") return { text: "Completed", variant: "default" as const };
+      if (s === "Pending") return { text: "Pending", variant: "secondary" as const };
+      return { text: "In Progress", variant: "outline" as const };
+    }
+
+    // Priority 2: Fallback to manual calculation for orders without a status field
     // Check if all items are completely finished (all 5 stages are Complete)
-    const allPacked = order.items?.every(
+    const allStagesComplete = order.items?.every(
       (item) =>
         item.frameCuttingStatus === "Complete" &&
         item.meshCuttingStatus === "Complete" &&
@@ -113,8 +126,11 @@ const OrderTable = ({ orders, role }: OrderTableProps) => {
         item.packagingStatus === "Pending"
     );
 
-    if (allPacked) {
+    if (allStagesComplete) {
       if (order.shippingStatus === "In Transit") {
+        return { text: "In Transit", variant: "default" as const };
+      }
+      if (order.shippingStatus === "Packed") {
         return { text: "Completed", variant: "default" as const };
       }
       return { text: "In Progress", variant: "outline" as const };

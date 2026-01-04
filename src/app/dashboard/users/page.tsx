@@ -668,7 +668,7 @@ function AddUserModal({
 
             {/* Active Toggle */}
             <div className="space-y-2">
-              <Label>Active</Label>
+              <Label>Status</Label>
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.isActive}
@@ -944,7 +944,7 @@ function EditUserModal({
 
             {/* Active Toggle */}
             <div className="space-y-2">
-              <Label>Active</Label>
+              <Label>Status</Label>
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.isActive}

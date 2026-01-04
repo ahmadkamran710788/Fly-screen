@@ -25,7 +25,7 @@ const OrderSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ["Pending", "In Progress", "Completed"],
+      enum: ["Pending", "In Progress", "Completed", "In Transit"],
       default: "Pending",
     },
     lineItems: [
@@ -121,13 +121,10 @@ OrderSchema.pre("save", function (next) {
 
     // Update the order status accordingly
     if (allPacked) {
-      // Auto-update shipping status to Packed if it is currently Pending
-      if (this.shippingStatus === "Pending") {
-        this.shippingStatus = "Packed";
-      }
-
-      // Overall status is only Completed if Shipping is In Transit
+      // Overall status logic:
       if (this.shippingStatus === "In Transit") {
+        this.status = "In Transit";
+      } else if (this.shippingStatus === "Packed") {
         this.status = "Completed";
       } else {
         this.status = "In Progress";
@@ -162,14 +159,12 @@ OrderSchema.pre("findOneAndUpdate", async function (next) {
     // Handle shipping status updates
     if (update.$set && update.$set.shippingStatus) {
       if (update.$set.shippingStatus === "In Transit") {
+        update.$set.status = "In Transit";
+      } else if (update.$set.shippingStatus === "Packed") {
         update.$set.status = "Completed";
-      } else if (update.$set.shippingStatus === "Packed" || update.$set.shippingStatus === "Pending") {
-        // If reverting from In Transit, usually revert to In Progress (unless we check items, which is hard here)
-        // Ideally we trust the save hook logic more, which is why api/orders/[id] should use save().
-        // But valid effort:
-        if (update.$set.status === "Completed") {
-          update.$set.status = "In Progress";
-        }
+      } else if (update.$set.shippingStatus === "Pending") {
+        // Only change to Pending if explicitly requested or we're not sure
+        // Usually, item statuses determine this.
       }
     }
 

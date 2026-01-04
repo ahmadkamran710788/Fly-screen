@@ -315,17 +315,17 @@ export async function POST(req: NextRequest) {
       totalTax: order.total_tax,
       customer: order.customer
         ? {
-            id: String(order.customer.id),
-            email: order.customer.email,
-            firstName: order.customer.first_name,
-            lastName: order.customer.last_name,
-            phone: order.customer.phone,
-            tags:
-              (order.customer.tags as string)
-                ?.split(",")
-                .map((t) => t.trim())
-                .filter(Boolean) || [],
-          }
+          id: String(order.customer.id),
+          email: order.customer.email,
+          firstName: order.customer.first_name,
+          lastName: order.customer.last_name,
+          phone: order.customer.phone,
+          tags:
+            (order.customer.tags as string)
+              ?.split(",")
+              .map((t) => t.trim())
+              .filter(Boolean) || [],
+        }
         : undefined,
       lineItems: (order.line_items || []).map((li: ShopifyLineItem) => ({
         id: String(li.id),
@@ -339,7 +339,10 @@ export async function POST(req: NextRequest) {
         frameCuttingStatus: "Pending",
         meshCuttingStatus: "Pending",
         qualityStatus: "Pending",
+        assemblyStatus: "Pending",
+        packagingStatus: "Pending",
       })),
+      status: "Pending",
       shippingAddress: order.shipping_address,
       billingAddress: order.billing_address,
       raw: order,

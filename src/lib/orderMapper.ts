@@ -121,6 +121,7 @@ export const mapOrder = (o: any): Order => {
       o.shippingAddress?.lastName ||
       o.shippingAddress?.last_name ||
       "",
+    status: o.status as any,
   };
 };
 
