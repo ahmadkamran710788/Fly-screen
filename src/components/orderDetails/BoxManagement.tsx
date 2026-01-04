@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Plus, Package, Trash2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { mapToTurkish } from "@/lib/mappings";
+import { mapField } from "@/lib/mappings";
+import { useTranslation } from "@/contexts/TranslationContext";
 
 interface BoxManagementProps {
   order: Order;
@@ -40,6 +41,7 @@ const BoxManagement = ({
   onDeleteBox,
   readOnly = false,
 }: BoxManagementProps) => {
+  const { t, language } = useTranslation();
   const { addBox: contextAddBox, deleteBox: contextDeleteBox } = useOrders();
 
   // Use provided handlers or fall back to context
@@ -235,20 +237,19 @@ const BoxManagement = ({
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-destructive" />
-              Delete {boxToDelete?.name}?
+              {t('Delete')} {boxToDelete?.name}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the box
-              and its contents from this order.
+              {t('This action cannot be undone. This will permanently delete the box and its contents from this order.')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('Cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {t('Delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -257,23 +258,23 @@ const BoxManagement = ({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Package Information</span>
+            <span>{t('Box Details')}</span>
             {!readOnly && (
               <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="gap-2">
                     <Plus className="h-4 w-4" />
-                    Add Box
+                    {t('Add Box')}
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-width-md">
                   <DialogHeader>
-                    <DialogTitle>Add New Box</DialogTitle>
+                    <DialogTitle>{t('Add New Box')}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="length">Length (cm)*</Label>
+                        <Label htmlFor="length">{t('Length')} (cm)*</Label>
                         <Input
                           id="length"
                           type="number"
@@ -299,7 +300,7 @@ const BoxManagement = ({
                         )}
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="width">Width (cm)*</Label>
+                        <Label htmlFor="width">{t('Width')} (cm)*</Label>
                         <Input
                           id="width"
                           type="number"
@@ -325,7 +326,7 @@ const BoxManagement = ({
                         )}
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="height">Height (cm)*</Label>
+                        <Label htmlFor="height">{t('Height')} (cm)*</Label>
                         <Input
                           id="height"
                           type="number"
@@ -351,7 +352,7 @@ const BoxManagement = ({
                         )}
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="weight">Weight (kg)</Label>
+                        <Label htmlFor="weight">{t('Weight')} (kg)</Label>
                         <Input
                           id="weight"
                           type="number"
@@ -379,10 +380,10 @@ const BoxManagement = ({
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="montaj">Montaj</Label>
+                      <Label htmlFor="montaj">{t('Montaj')}</Label>
                       <Input
                         id="montaj"
-                        value={order.items[0] ? mapToTurkish(order.items[0].mountingType, order.store, "mounting") : ""}
+                        value={order.items[0] ? mapField(order.items[0].mountingType, order.store, "mounting", language) : ""}
                         disabled
                         className="bg-muted opacity-100 cursor-not-allowed border-black"
                       />
@@ -390,7 +391,7 @@ const BoxManagement = ({
 
                     <div className="space-y-2">
                       <Label className={errors.items ? "text-red-500" : ""}>
-                        Items in this box
+                        {t('Items in this box')}
                       </Label>
                       <div
                         className={`space-y-2 ${errors.items ? "border border-red-500 rounded-md p-3" : ""
@@ -410,7 +411,7 @@ const BoxManagement = ({
                               htmlFor={`item-${item.id}`}
                               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                             >
-                              Item {index + 1} ({item.width}cm x {item.height}cm)
+                              {t('Item')} {index + 1} ({item.width}cm x {item.height}cm)
                             </label>
                           </div>
                         ))}
@@ -421,7 +422,7 @@ const BoxManagement = ({
                     </div>
 
                     <Button onClick={handleSubmit} className="w-full">
-                      Save Box
+                      {t('Save Box')}
                     </Button>
                   </div>
                 </DialogContent>
@@ -433,20 +434,27 @@ const BoxManagement = ({
           {order.boxes.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>No boxes added yet</p>
+              <p>{t('No boxes added yet')}</p>
               {!readOnly && (
-                <p className="text-sm">Click "Add Box" to create a package</p>
+                <p className="text-sm">{t('Click "Add Box" to create a package')}</p>
               )}
             </div>
           ) : (
             <div className="space-y-4">
               {order.boxes.map((box, index) => {
+                const itemsInBox = order.items.filter((item) =>
+                  box.items.includes(item.id)
+                );
+                const montajValue = itemsInBox.length > 0
+                  ? mapField(itemsInBox[0].mountingType, order.store, "mounting", language)
+                  : "-";
+
                 const itemNames = box.items
                   .map((itemId) => {
                     const itemIndex = order.items.findIndex(
                       (item) => item.id === itemId
                     );
-                    return `Item ${itemIndex + 1}`;
+                    return `${t('Item')} ${itemIndex + 1}`;
                   })
                   .join(", ");
 
@@ -457,21 +465,27 @@ const BoxManagement = ({
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="font-semibold mb-2">Box {index + 1}</h4>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-semibold">{t('Box')} {index + 1}</h4>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div>
                             <span className="text-muted-foreground">
-                              Dimensions:
+                              {t('Dimensions')}:
                             </span>{" "}
                             {box.length}cm x {box.width}cm x {box.height}cm
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Weight:</span>{" "}
+                            <span className="text-muted-foreground">{t('Weight')}:</span>{" "}
                             {box.weight}kg
                           </div>
-                          <div className="col-span-2">
+                          <div>
+                            <span className="text-muted-foreground">{t('Montaj')}:</span>{" "}
+                            <span className="font-medium text-foreground">{montajValue}</span>
+                          </div>
+                          <div className="col-span-2 md:col-span-1">
                             <span className="text-muted-foreground">
-                              Contains:
+                              {t('Contains')}:
                             </span>{" "}
                             {itemNames}
                           </div>
@@ -482,7 +496,7 @@ const BoxManagement = ({
                           size="sm"
                           variant="destructive"
                           onClick={() =>
-                            handleDeleteClick(box.id, `Box ${index + 1}`)
+                            handleDeleteClick(box.id, `${t('Box')} ${index + 1}`)
                           }
                         >
                           <Trash2 className="h-4 w-4" />
@@ -501,3 +515,4 @@ const BoxManagement = ({
 };
 
 export default BoxManagement;
+

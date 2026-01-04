@@ -6,6 +6,7 @@ import { formatDateGMT1 } from './timezone';
 
 // Calculate overall status of an order
 const getOverallStatus = (order: Order): string => {
+  if (!order) return "Pending";
   // Check if all items are completely finished (all 5 stages are Complete)
   const allPacked = order.items?.every(
     (item) =>
@@ -64,6 +65,12 @@ const addAllOrdersTable = (doc: jsPDF, orders: Order[], startY: number = 20) => 
   orders.forEach((order) => {
     const overallStatus = getOverallStatus(order);
     order.items.forEach((item) => {
+      const boxIndex = order.boxes?.findIndex(box => box.items.includes(item.id)) ?? -1;
+      const box = boxIndex !== -1 && order.boxes ? order.boxes[boxIndex] : null;
+      const boxName = boxIndex !== -1 ? `Box ${boxIndex + 1}` : '-';
+      const boxDimensions = box ? `${box.length}x${box.width}x${box.height}` : '-';
+      const boxWeight = box ? box.weight : '-';
+
       tableData.push([
         order.orderNumber,
         formatDateGMT1(order.orderDate),
@@ -74,6 +81,9 @@ const addAllOrdersTable = (doc: jsPDF, orders: Order[], startY: number = 20) => 
         item.frameCuttingStatus,
         item.meshCuttingStatus,
         item.qualityStatus,
+        boxName,
+        boxDimensions,
+        boxWeight,
         overallStatus,
       ]);
     });
@@ -92,12 +102,15 @@ const addAllOrdersTable = (doc: jsPDF, orders: Order[], startY: number = 20) => 
         'Frame Status',
         'Mesh Status',
         'Quality Status',
+        'Box',
+        'Box Dims',
+        'Box Kg',
         'Overall Status',
       ],
     ],
     body: tableData,
     theme: 'grid',
-    styles: { fontSize: 8, cellPadding: 2 },
+    styles: { fontSize: 7, cellPadding: 2 },
     headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
   });
 
@@ -200,49 +213,7 @@ const addMeshCuttingTable = (doc: jsPDF, orders: Order[], startY: number = 20) =
   return doc;
 };
 
-// Add Box Details table to PDF
-const addBoxDetailsTable = (doc: jsPDF, orders: Order[], startY: number = 20) => {
-  const tableData: any[] = [];
 
-  orders.forEach((order) => {
-    if (order.boxes && order.boxes.length > 0) {
-      order.boxes.forEach((box) => {
-        tableData.push([
-          order.orderNumber,
-          box.id,
-          box.length,
-          box.width,
-          box.height,
-          box.weight,
-          box.items.join(', '),
-        ]);
-      });
-    }
-  });
-
-  if (tableData.length === 0) return doc;
-
-  autoTable(doc, {
-    startY,
-    head: [
-      [
-        'Order Number',
-        'Box ID',
-        'Length (cm)',
-        'Width (cm)',
-        'Height (cm)',
-        'Weight (kg)',
-        'Items In Box',
-      ],
-    ],
-    body: tableData,
-    theme: 'grid',
-    styles: { fontSize: 8, cellPadding: 2 },
-    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-  });
-
-  return doc;
-};
 
 
 // Export for Admin: 3 pages (All Orders, Frame Cutting Detail, Mesh Cutting Details)
@@ -266,11 +237,7 @@ export const exportAdminToPDF = (orders: Order[]) => {
   doc.text('Mesh Cutting Details', 14, 15);
   addMeshCuttingTable(doc, orders, 20);
 
-  // Page 4: Box Details
-  doc.addPage();
-  doc.setFontSize(16);
-  doc.text('Box Details', 14, 15);
-  addBoxDetailsTable(doc, orders, 20);
+
 
   // Download
   doc.save(`Admin_Orders_Export_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -363,11 +330,7 @@ export const exportPackingToPDF = (orders: Order[]) => {
   doc.text('All Orders', 14, 15);
   addAllOrdersTable(doc, orders, 20);
 
-  // Page 2: Box Details
-  doc.addPage();
-  doc.setFontSize(16);
-  doc.text('Box Details', 14, 15);
-  addBoxDetailsTable(doc, orders, 20);
+
 
   // Download
   doc.save(`Packing_Export_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -419,6 +382,9 @@ export const exportPackagingOrderToPDF = (order: Order) => {
   doc.setTextColor(0);
   doc.text(`${itemCount} ${itemCount === 1 ? 'item' : 'items'}`, 10, 92);
 
-  // Download
-  doc.save(`Order_${order.orderNumber}_Label.pdf`);
+  // Open in new window for printing
+  doc.autoPrint();
+  const blob = doc.output('blob');
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
 };

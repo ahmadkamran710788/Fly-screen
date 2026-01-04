@@ -70,9 +70,6 @@ async function getOrders(
   if (filters?.deadlineStatus && filters.deadlineStatus !== "all") {
     params.append("deadlineStatus", filters.deadlineStatus);
   }
-  if (filters?.minWeight) {
-    params.append("minWeight", filters.minWeight);
-  }
   if (filters?.maxWeight) {
     params.append("maxWeight", filters.maxWeight);
   }
@@ -108,7 +105,6 @@ export default function Page() {
     orderDate: "",
     deliveryDate: "",
     deadlineStatus: "all",
-    minWeight: "",
     maxWeight: "",
   });
 

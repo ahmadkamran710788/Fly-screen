@@ -137,6 +137,7 @@ const OrderTable = ({ orders, role }: OrderTableProps) => {
             <TableHead>Status</TableHead>
             <TableHead>Items</TableHead>
             <TableHead>Deadline</TableHead>
+            <TableHead>Boxes</TableHead>
             {(role === "Admin" || role === "Shipping") && (
               <TableHead>Total Weight (kg)</TableHead>
             )}
@@ -147,7 +148,7 @@ const OrderTable = ({ orders, role }: OrderTableProps) => {
           {orders.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={role === "Admin" || role === "Shipping" ? 11 : 10}
+                colSpan={role === "Admin" || role === "Shipping" ? 12 : 11}
                 className="text-center py-8 text-muted-foreground"
               >
                 No orders found
@@ -192,6 +193,13 @@ const OrderTable = ({ orders, role }: OrderTableProps) => {
                   </TableCell>
                   <TableCell>
                     <Badge variant={deadline.variant}>{deadline.text}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {order.boxes && order.boxes.length > 0 ? (
+                      <Badge variant="outline">{order.boxes.length} Box{order.boxes.length !== 1 ? 'es' : ''}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                   {(role === "Admin" || role === "Shipping") && (
                     <TableCell className="font-medium">

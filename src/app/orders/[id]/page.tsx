@@ -44,11 +44,14 @@ import { useOrderSync } from "@/hooks/useOrderSync";
 import { exportPackagingOrderToPDF } from "@/lib/exportToPDF";
 import { mapProfileColor } from "@/lib/mappings";
 
+import { useTranslation } from "@/contexts/TranslationContext";
+
 export default function Page() {
   const params = useParams<{ id: string }>();
   const { role } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const { t, language, setLanguage } = useTranslation();
 
   const [order, setOrder] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -913,9 +916,18 @@ export default function Page() {
             className="gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Orders
+            {t('Back to Orders')}
           </Button>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <Select value={language} onValueChange={(val: any) => setLanguage(val)}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tr">Turkish</SelectItem>
+                <SelectItem value="en">English</SelectItem>
+              </SelectContent>
+            </Select>
             {(role === "Packaging" || role === "Admin" || role === "Shipping") && (
               <Button
                 variant="outline"
@@ -923,7 +935,7 @@ export default function Page() {
                 className="gap-2"
               >
                 <Printer className="h-4 w-4" />
-                Print Order
+                {t('Print Order')}
               </Button>
             )}
             {role === "Admin" && (
@@ -933,7 +945,7 @@ export default function Page() {
                 className="gap-2"
               >
                 <Trash2 className="h-4 w-4" />
-                Delete Order
+                {t('Delete Order')}
               </Button>
             )}
           </div>
@@ -943,11 +955,11 @@ export default function Page() {
           <CardContent className="pt-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <p className="text-sm text-muted-foreground">Order Number</p>
+                <p className="text-sm text-muted-foreground">{t('Order Number')}</p>
                 <p className="text-2xl font-bold">{order.orderNumber}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">First Name</p>
+                <p className="text-sm text-muted-foreground">{t('First Name')}</p>
                 <p className="text-lg font-semibold">
                   {order.firstName ||
                     order.customer?.firstName ||
@@ -958,7 +970,7 @@ export default function Page() {
                 </p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Last Name</p>
+                <p className="text-sm text-muted-foreground">{t('Last Name')}</p>
                 <p className="text-lg font-semibold">
                   {order.lastName ||
                     order.customer?.lastName ||
@@ -969,26 +981,26 @@ export default function Page() {
                 </p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Order Date</p>
+                <p className="text-sm text-muted-foreground">{t('Order Date')}</p>
                 <p className="text-lg font-semibold">
                   {format(order.orderDate, "dd/MM/yyyy")}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Store</p>
+                <p className="text-sm text-muted-foreground">{t('Store')}</p>
                 <Badge variant="outline" className="text-lg">
                   {order.store}
                 </Badge>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Items</p>
+                <p className="text-sm text-muted-foreground">{t('Items')}</p>
                 <p className="text-lg font-semibold">
-                  {order.items.length} item{order.items.length !== 1 ? "s" : ""}
+                  {order.items.length} {t('item')}{order.items.length !== 1 ? "s" : ""}
                 </p>
               </div>
               {(role === "Admin" || role === "Shipping") && (
                 <div>
-                  <p className="text-sm text-muted-foreground">Shipping Status</p>
+                  <p className="text-sm text-muted-foreground">{t('Shipping Status')}</p>
                   <Select
                     value={order.shippingStatus || "Pending"}
                     onValueChange={handleShippingStatusChange}
@@ -1013,13 +1025,13 @@ export default function Page() {
         </Card>
 
         <div className="space-y-4">
-          <h3 className="text-xl font-bold">Order Items</h3>
+          <h3 className="text-xl font-bold">{t('Order Items')}</h3>
 
           {order.items.map((item: any, index: number) => (
             <div key={item.id} className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="text-lg font-semibold">
-                  Item {index + 1}
+                  {t('Item')} {index + 1}
                   {item.productTitle && (
                     <span className="text-sm font-normal text-muted-foreground ml-2">
                       - {item.productTitle}
@@ -1030,7 +1042,7 @@ export default function Page() {
                   {(role === "Frame Cutting" || role === "Admin" || role === "Shipping") && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        Frame:
+                        {t('Frame')}:
                       </span>
                       <Select
                         value={item.frameCuttingStatus}
@@ -1059,7 +1071,7 @@ export default function Page() {
                   {(role === "Mesh Cutting" || role === "Admin" || role === "Shipping") && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        Mesh:
+                        {t('Mesh')}:
                       </span>
                       <Select
                         value={item.meshCuttingStatus}
@@ -1088,7 +1100,7 @@ export default function Page() {
                   {(role === "Quality" || role === "Admin" || role === "Shipping") && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        Quality:
+                        {t('Quality')}:
                       </span>
                       <Select
                         value={item.qualityStatus}
@@ -1117,7 +1129,7 @@ export default function Page() {
                   {(role === "Assembly" || role === "Admin" || role === "Shipping") && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        Assembly:
+                        {t('Assembly')}:
                       </span>
                       <Select
                         value={item.assemblyStatus}
@@ -1146,7 +1158,7 @@ export default function Page() {
                   {(role === "Packaging" || role === "Admin" || role === "Shipping") && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        Packaging:
+                        {t('Packaging')}:
                       </span>
                       <Select
                         value={item.packagingStatus}
@@ -1267,9 +1279,9 @@ export default function Page() {
                 <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
               </div>
               <div>
-                <AlertDialogTitle className="text-xl">Delete Order?</AlertDialogTitle>
+                <AlertDialogTitle className="text-xl">{t('Delete Order?')}</AlertDialogTitle>
                 <AlertDialogDescription className="mt-1">
-                  This action cannot be undone.
+                  {t('This action cannot be undone.')}
                 </AlertDialogDescription>
               </div>
             </div>
@@ -1277,20 +1289,20 @@ export default function Page() {
 
           <div className="py-4">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete order{" "}
+              {t('Are you sure you want to delete order')}{" "}
               <span className="font-semibold text-foreground">#{order?.orderNumber}</span>?
-              All associated items and boxes will be permanently removed.
+              {t('All associated items and boxes will be permanently removed.')}
             </p>
           </div>
 
           <AlertDialogFooter className="gap-2 sm:gap-0">
-            <AlertDialogCancel className="mt-0">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="mt-0">{t('Cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteOrder}
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Delete Order
+              {t('Delete Order')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -71,6 +71,9 @@ const createAllOrdersSheet = (orders: Order[]) => {
     'Frame Cutting Status',
     'Mesh Cutting Status',
     'Quality Status',
+    'Box',
+    'Box Dimensions (LxWxH)',
+    'Box Weight (kg)',
     'Overall Status',
   ]);
 
@@ -78,6 +81,12 @@ const createAllOrdersSheet = (orders: Order[]) => {
   orders.forEach((order) => {
     const overallStatus = getOverallStatus(order);
     order.items.forEach((item) => {
+      const boxIndex = order.boxes?.findIndex(box => box.items.includes(item.id)) ?? -1;
+      const box = boxIndex !== -1 && order.boxes ? order.boxes[boxIndex] : null;
+      const boxName = boxIndex !== -1 ? `Box ${boxIndex + 1}` : '-';
+      const boxDimensions = box ? `${box.length}x${box.width}x${box.height}` : '-';
+      const boxWeight = box ? box.weight : '-';
+
       data.push([
         order.orderNumber,
         formatDateGMT1(order.orderDate),
@@ -88,6 +97,9 @@ const createAllOrdersSheet = (orders: Order[]) => {
         item.frameCuttingStatus,
         item.meshCuttingStatus,
         item.qualityStatus,
+        boxName,
+        boxDimensions,
+        boxWeight,
         overallStatus,
       ]);
     });
@@ -178,40 +190,7 @@ const createMeshCuttingSheet = (orders: Order[]) => {
   return data;
 };
 
-// Create Box Details sheet data
-const createBoxDetailsSheet = (orders: Order[]) => {
-  const data: any[] = [];
 
-  // Header row
-  data.push([
-    'Order Number',
-    'Box ID',
-    'Length (cm)',
-    'Width (cm)',
-    'Height (cm)',
-    'Weight (kg)',
-    'Items In Box',
-  ]);
-
-  // Data rows
-  orders.forEach((order) => {
-    if (order.boxes && order.boxes.length > 0) {
-      order.boxes.forEach((box) => {
-        data.push([
-          order.orderNumber,
-          box.id,
-          box.length,
-          box.width,
-          box.height,
-          box.weight,
-          box.items.join(', '),
-        ]);
-      });
-    }
-  });
-
-  return data;
-};
 
 // Export for Admin: 3 sheets (All Orders, Frame Cutting Detail, Mesh Cutting Details)
 export const exportAdminToExcel = (orders: Order[]) => {
@@ -232,12 +211,7 @@ export const exportAdminToExcel = (orders: Order[]) => {
   const ws3 = XLSX.utils.aoa_to_sheet(meshCuttingData);
   XLSX.utils.book_append_sheet(wb, ws3, 'Mesh Cutting Details');
 
-  // Sheet 4: Box Details
-  const boxDetailsData = createBoxDetailsSheet(orders);
-  if (boxDetailsData.length > 1) {
-    const ws4 = XLSX.utils.aoa_to_sheet(boxDetailsData);
-    XLSX.utils.book_append_sheet(wb, ws4, 'Box Details');
-  }
+
 
   // Download
   XLSX.writeFile(wb, `Admin_Orders_Export_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -296,12 +270,7 @@ export const exportPackingToExcel = (orders: Order[]) => {
   const ws1 = XLSX.utils.aoa_to_sheet(allOrdersData);
   XLSX.utils.book_append_sheet(wb, ws1, 'All Orders');
 
-  // Sheet 2: Box Details
-  const boxDetailsData = createBoxDetailsSheet(orders);
-  if (boxDetailsData.length > 1) {
-    const ws2 = XLSX.utils.aoa_to_sheet(boxDetailsData);
-    XLSX.utils.book_append_sheet(wb, ws2, 'Box Details');
-  }
+
 
   // Download
   XLSX.writeFile(wb, `Packing_Export_${new Date().toISOString().split('T')[0]}.xlsx`);

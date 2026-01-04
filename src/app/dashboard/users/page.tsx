@@ -71,7 +71,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [limit] = useState(30);
+  const [limit, setLimit] = useState(30);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -93,7 +93,7 @@ export default function UsersPage() {
     if (role === "Admin") {
       fetchUsers();
     }
-  }, [page, statusFilter, role]);
+  }, [page, limit, statusFilter, role]);
 
   const fetchUsers = async () => {
     try {
@@ -186,7 +186,7 @@ export default function UsersPage() {
 
       <main className="container mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col items-start gap-2">
             <Button
               variant="outline"
               onClick={() => router.push("/dashboard")}
@@ -285,10 +285,33 @@ export default function UsersPage() {
                 </TableBody>
               </Table>
 
-              <div className="flex items-center justify-between px-4 py-4 border-t">
-                <p className="text-sm text-muted-foreground">
-                  Total users: {totalCount}
-                </p>
+              <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-4 border-t gap-4">
+                <div className="flex items-center gap-4">
+                  <p className="text-sm text-muted-foreground whitespace-nowrap">
+                    Total users: {totalCount}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Rows per page:</span>
+                    <Select
+                      value={limit.toString()}
+                      onValueChange={(value) => {
+                        setLimit(Number(value));
+                        setPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 w-[70px]">
+                        <SelectValue placeholder={limit} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="30">30</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
