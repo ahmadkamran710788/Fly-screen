@@ -4,7 +4,10 @@ import {
   FrameCuttingStatus,
   MeshCuttingStatus,
   QualityStatus,
+  PackagingStatus,
+  AssemblyStatus,
 } from "@/types/order";
+import { mapProfileColor } from "./mappings";
 import { get } from "http";
 
 // Helper to get property value from line item
@@ -22,8 +25,8 @@ export const mapOrder = (o: any): Order => {
     orderDate: o.processedAt
       ? new Date(o.processedAt)
       : o.createdAt
-      ? new Date(o.createdAt)
-      : new Date(),
+        ? new Date(o.createdAt)
+        : new Date(),
     store: `.${o.storeKey || "nl"}` as any,
     items: (o.lineItems || []).map((li: any, idx: number): OrderItem => {
       // Try to get properties from lineItem first, then from raw
@@ -38,31 +41,32 @@ export const mapOrder = (o: any): Order => {
         id: String(li.id || li._id || `${o.shopifyId}-${idx + 1}`),
         width: parseFloat(
           getProp(props, "Breedte in cm") ||
-            getProp(props, "En") ||
-            getProp(props, "Breite in cm") ||
-            getProp(props, "Bredde i cm") ||
-            getProp(props, "Largeur en cm") ||
-            getProp(props, "Width in cm") ||
-            "0"
+          getProp(props, "En") ||
+          getProp(props, "Breite in cm") ||
+          getProp(props, "Bredde i cm") ||
+          getProp(props, "Largeur en cm") ||
+          getProp(props, "Width in cm") ||
+          "0"
         ),
         height: parseFloat(
           getProp(props, "Hoogte in cm") ||
-            getProp(props, "Boy") ||
-            getProp(props, "Höhe in cm") ||
-            getProp(props, "Højde i cm") ||
-            getProp(props, "Hauteur en cm") ||
-            getProp(props, "Height in cm") ||
-            "0"
+          getProp(props, "Boy") ||
+          getProp(props, "Höhe in cm") ||
+          getProp(props, "Højde i cm") ||
+          getProp(props, "Hauteur en cm") ||
+          getProp(props, "Height in cm") ||
+          "0"
         ),
-        profileColor:
+        profileColor: mapProfileColor(
           getProp(props, "Profielkleur:") ||
           getProp(props, "Profil renk") ||
           getProp(props, "Profilfarbe") ||
           getProp(props, "Ramme farve") ||
           getProp(props, "Frame colour") ||
-          "-",
+          "-"
+        ),
         orientation:
-          getProp(props, "Schuifrichting") || getProp(props, "Yon") || "",
+          getProp(props, "Schuifrichting") || getProp(props, "Yon") || "YATAY",
         installationType:
           getProp(props, "Plaatsing") ||
           getProp(props, "Kurulum") ||
@@ -95,9 +99,28 @@ export const mapOrder = (o: any): Order => {
         meshCuttingStatus: (li.meshCuttingStatus ||
           "Pending") as MeshCuttingStatus,
         qualityStatus: (li.qualityStatus || "Pending") as QualityStatus,
+        packagingStatus: (li.packagingStatus || "Pending") as PackagingStatus,
+        assemblyStatus: (li.assemblyStatus || "Pending") as AssemblyStatus,
       };
     }),
     boxes: o.boxes || [],
+    shippingStatus: o.shippingStatus || "Pending",
+    firstName:
+      o.customer?.firstName ||
+      o.customer?.first_name ||
+      o.billingAddress?.firstName ||
+      o.billingAddress?.first_name ||
+      o.shippingAddress?.firstName ||
+      o.shippingAddress?.first_name ||
+      "",
+    lastName:
+      o.customer?.lastName ||
+      o.customer?.last_name ||
+      o.billingAddress?.lastName ||
+      o.billingAddress?.last_name ||
+      o.shippingAddress?.lastName ||
+      o.shippingAddress?.last_name ||
+      "",
   };
 };
 

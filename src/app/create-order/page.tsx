@@ -85,6 +85,8 @@ export default function Page() {
   const [store, setStore] = useState<Store | "">("");
   const [itemCount, setItemCount] = useState(1);
   const [orderDate, setOrderDate] = useState<string>("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [items, setItems] = useState<Partial<OrderItem>[]>([{}]);
   const [errors, setErrors] = useState<Record<number, Record<string, string>>>(
     {}
@@ -267,6 +269,8 @@ export default function Page() {
         frameCuttingStatus: "Pending",
         meshCuttingStatus: "Pending",
         qualityStatus: "Pending",
+        packagingStatus: "Pending",
+        assemblyStatus: "Pending",
       }));
 
       await addOrder({
@@ -274,6 +278,8 @@ export default function Page() {
         orderDate: new Date(orderDate),
         store: store as Store,
         items: completeItems,
+        firstName,
+        lastName,
       });
 
       toast({
@@ -384,6 +390,26 @@ export default function Page() {
                     {formErrors.orderDate}
                   </p>
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="First name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Last name"
+                />
               </div>
 
               <div className="space-y-2">

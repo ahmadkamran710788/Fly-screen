@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Factory, LogOut, Plus } from "lucide-react";
+import { Factory, LogOut, Plus, Users } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -28,6 +28,10 @@ const DashboardHeader = () => {
 
   const handleCreateOrder = () => {
     router.push("/create-order");
+  };
+
+  const handleUserManagement = () => {
+    router.push("/dashboard/users");
   };
 
   const handleSync = async () => {
@@ -125,6 +129,18 @@ const DashboardHeader = () => {
                 {isSyncing ? "Syncing..." : "Sync Store"}
               </Button>
             </div>
+
+            {role === "Admin" && (
+              <Button
+                onClick={handleUserManagement}
+                variant="outline"
+                size="sm"
+                className="gap-2 hover:cursor-pointer"
+              >
+                <Users className="h-4 w-4" />
+                User Management
+              </Button>
+            )}
 
             {role === "Admin" && (
               <Button

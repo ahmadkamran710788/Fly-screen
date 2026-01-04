@@ -149,6 +149,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           orderDate: order.orderDate,
           store: order.store,
           items: order.items,
+          firstName: order.firstName,
+          lastName: order.lastName,
         }),
       });
 

@@ -7,6 +7,8 @@ import DashboardHeader from "@/components/DashboardHeader";
 import SawingView from "@/components/orderDetails/SawingView";
 import MeshCuttingView from "@/components/orderDetails/MeshCuttingView";
 import QualityView from "@/components/orderDetails/QualityView";
+import PackagingView from "@/components/orderDetails/PackagingView";
+import AssembleView from "@/components/orderDetails/AssembleView";
 import BoxManagement from "@/components/orderDetails/BoxManagement";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,21 +30,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Trash2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Trash2, AlertTriangle, Printer } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import {
   FrameCuttingStatus,
   MeshCuttingStatus,
   QualityStatus,
+  PackagingStatus,
+  AssemblyStatus,
 } from "@/types/order";
 import { useOrderSync } from "@/hooks/useOrderSync";
+import { exportPackagingOrderToPDF } from "@/lib/exportToPDF";
+import { mapProfileColor } from "@/lib/mappings";
+
+import { useTranslation } from "@/contexts/TranslationContext";
 
 export default function Page() {
   const params = useParams<{ id: string }>();
   const { role } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const { t, language, setLanguage } = useTranslation();
 
   const [order, setOrder] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,16 +73,21 @@ export default function Page() {
 
           return {
             ...prev,
+            status: event.orderStatus ?? prev.status,
+            shippingStatus: event.shippingStatus ?? prev.shippingStatus,
             items: prev.items.map((item: any) =>
               item.id === event.itemId
                 ? {
-                    ...item,
-                    frameCuttingStatus:
-                      event.frameCuttingStatus ?? item.frameCuttingStatus,
-                    meshCuttingStatus:
-                      event.meshCuttingStatus ?? item.meshCuttingStatus,
-                    qualityStatus: event.qualityStatus ?? item.qualityStatus,
-                  }
+                  ...item,
+                  frameCuttingStatus:
+                    event.frameCuttingStatus ?? item.frameCuttingStatus,
+                  meshCuttingStatus:
+                    event.meshCuttingStatus ?? item.meshCuttingStatus,
+                  qualityStatus: event.qualityStatus ?? item.qualityStatus,
+                  packagingStatus:
+                    event.packagingStatus ?? item.packagingStatus,
+                  assemblyStatus: event.assemblyStatus ?? item.assemblyStatus,
+                }
                 : item
             ),
           };
@@ -120,8 +134,8 @@ export default function Page() {
         const utcDate = o.processedAt
           ? new Date(o.processedAt)
           : o.createdAt
-          ? new Date(o.createdAt)
-          : new Date();
+            ? new Date(o.createdAt)
+            : new Date();
 
         const mapped = {
           id: String(o._id || o.shopifyId || ""),
@@ -144,30 +158,31 @@ export default function Page() {
               id: String(li.id || li._id || `${o.shopifyId}-${idx + 1}`),
               width: parseFloat(
                 getProp(props, "Breedte in cm") ||
-                  getProp(props, "En") ||
-                  getProp(props, "Breite in cm") ||
-                  getProp(props, "Bredde i cm") ||
-                  getProp(props, "Largeur en cm") ||
-                  getProp(props, "Width in cm") ||
-                  "0"
+                getProp(props, "En") ||
+                getProp(props, "Breite in cm") ||
+                getProp(props, "Bredde i cm") ||
+                getProp(props, "Largeur en cm") ||
+                getProp(props, "Width in cm") ||
+                "0"
               ),
               height: parseFloat(
                 getProp(props, "Hoogte in cm") ||
-                  getProp(props, "Boy") ||
-                  getProp(props, "Höhe in cm") ||
-                  getProp(props, "Højde i cm") ||
-                  getProp(props, "Hauteur en cm") ||
-                  getProp(props, "Height in cm") ||
-                  "0"
+                getProp(props, "Boy") ||
+                getProp(props, "Höhe in cm") ||
+                getProp(props, "Højde i cm") ||
+                getProp(props, "Hauteur en cm") ||
+                getProp(props, "Height in cm") ||
+                "0"
               ),
-              profileColor:
+              profileColor: mapProfileColor(
                 getProp(props, "Profielkleur:") ||
                 getProp(props, "Profil renk") ||
                 getProp(props, "Profilfarbe") ||
                 getProp(props, "Ramme farve") ||
-                "-",
+                "-"
+              ),
               orientation:
-                getProp(props, "Schuifrichting") || getProp(props, "Yon") || "",
+                getProp(props, "Schuifrichting") || getProp(props, "Yon") || "YATAY",
               installationType:
                 getProp(props, "Plaatsing") ||
                 getProp(props, "Kurulum") ||
@@ -202,6 +217,8 @@ export default function Page() {
               meshCuttingStatus: (li.meshCuttingStatus ||
                 "Pending") as MeshCuttingStatus,
               qualityStatus: (li.qualityStatus || "Pending") as QualityStatus,
+              packagingStatus: (li.packagingStatus || "Pending") as PackagingStatus,
+              assemblyStatus: (li.assemblyStatus || "Pending") as AssemblyStatus,
               // Include product title and other useful info
               productTitle: li.title || li.name || "",
               quantity: li.quantity || 1,
@@ -209,8 +226,34 @@ export default function Page() {
             };
           }),
           boxes: o.boxes || [],
+          shippingStatus: o.shippingStatus || "Pending",
           raw: o,
+          shippingAddress: o.shippingAddress,
+          billingAddress: o.billingAddress,
+          customer: o.customer,
+          firstName:
+            o.customer?.firstName ||
+            o.customer?.first_name ||
+            o.billingAddress?.firstName ||
+            o.billingAddress?.first_name ||
+            o.shippingAddress?.firstName ||
+            o.shippingAddress?.first_name ||
+            "",
+          lastName:
+            o.customer?.lastName ||
+            o.customer?.last_name ||
+            o.billingAddress?.lastName ||
+            o.billingAddress?.last_name ||
+            o.shippingAddress?.lastName ||
+            o.shippingAddress?.last_name ||
+            "",
         };
+
+        console.log("Customer Data Debug:", {
+          customer: o.customer,
+          billing: o.billingAddress,
+          firstNameResolved: mapped.firstName
+        });
 
         console.log("Mapped order:", mapped);
         setOrder(mapped);
@@ -294,7 +337,18 @@ export default function Page() {
       }
 
       const result = await response.json();
-      console.log("Frame cutting status update result:", result);
+
+      // Update local state with potentially changed shippingStatus or overall status
+      if (result.order) {
+        setOrder((prev: any) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            status: result.order.status,
+            shippingStatus: result.order.shippingStatus,
+          };
+        });
+      }
 
       toast({
         title: "Status Updated",
@@ -362,7 +416,18 @@ export default function Page() {
       }
 
       const result = await response.json();
-      console.log("Mesh cutting status update result:", result);
+
+      // Update local state with potentially changed shippingStatus or overall status
+      if (result.order) {
+        setOrder((prev: any) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            status: result.order.status,
+            shippingStatus: result.order.shippingStatus,
+          };
+        });
+      }
 
       toast({
         title: "Status Updated",
@@ -378,6 +443,83 @@ export default function Page() {
           ...prev,
           items: prev.items.map((it: any) =>
             it.id === itemId ? { ...it, meshCuttingStatus: previousStatus } : it
+          ),
+        };
+      });
+
+      toast({
+        title: "Failed to update status",
+        description: error?.message || "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePackagingStatusChange = async (
+    itemId: string,
+    newStatus: PackagingStatus
+  ) => {
+    // Optimistic update - update UI immediately
+    const previousStatus = order.items.find(
+      (it: any) => it.id === itemId
+    )?.packagingStatus;
+    setOrder((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.map((it: any) =>
+          it.id === itemId ? { ...it, packagingStatus: newStatus } : it
+        ),
+      };
+    });
+
+    // Persist to backend
+    try {
+      const response = await fetch(
+        `/api/orders/${params?.id}/items/${itemId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            packagingStatus: newStatus,
+            role: role,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update status");
+      }
+
+      const result = await response.json();
+
+      // Update local state with potentially changed shippingStatus or overall status
+      if (result.order) {
+        setOrder((prev: any) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            status: result.order.status,
+            shippingStatus: result.order.shippingStatus,
+          };
+        });
+      }
+
+      toast({
+        title: "Status Updated",
+        description: `Packaging status changed to ${newStatus}`,
+      });
+    } catch (error: any) {
+      console.error("Error updating packaging status:", error);
+
+      // Revert optimistic update on error
+      setOrder((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.map((it: any) =>
+            it.id === itemId ? { ...it, packagingStatus: previousStatus } : it
           ),
         };
       });
@@ -428,7 +570,18 @@ export default function Page() {
       }
 
       const result = await response.json();
-      console.log("Quality status update result:", result);
+
+      // Update local state with potentially changed shippingStatus or overall status
+      if (result.order) {
+        setOrder((prev: any) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            status: result.order.status,
+            shippingStatus: result.order.shippingStatus,
+          };
+        });
+      }
 
       toast({
         title: "Status Updated",
@@ -451,6 +604,119 @@ export default function Page() {
       toast({
         title: "Failed to update status",
         description: error?.message || "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAssemblyStatusChange = async (
+    itemId: string,
+    newStatus: AssemblyStatus
+  ) => {
+    // Optimistic update - update UI immediately
+    const previousStatus = order.items.find(
+      (it: any) => it.id === itemId
+    )?.assemblyStatus;
+    setOrder((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.map((it: any) =>
+          it.id === itemId ? { ...it, assemblyStatus: newStatus } : it
+        ),
+      };
+    });
+
+    // Persist to backend
+    try {
+      const response = await fetch(
+        `/api/orders/${params?.id}/items/${itemId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            assemblyStatus: newStatus,
+            role: role,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update status");
+      }
+
+      const result = await response.json();
+
+      // Update local state with potentially changed shippingStatus or overall status
+      if (result.order) {
+        setOrder((prev: any) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            status: result.order.status,
+            shippingStatus: result.order.shippingStatus,
+          };
+        });
+      }
+
+      toast({
+        title: "Status Updated",
+        description: `Assembly status changed to ${newStatus}`,
+      });
+    } catch (error: any) {
+      console.error("Error updating assembly status:", error);
+
+      // Revert optimistic update on error
+      setOrder((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.map((it: any) =>
+            it.id === itemId ? { ...it, assemblyStatus: previousStatus } : it
+          ),
+        };
+      });
+
+      toast({
+        title: "Failed to update status",
+        description: error?.message || "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleShippingStatusChange = async (newStatus: "Pending" | "Complete") => {
+    // Optimistic update
+    const previousStatus = order.shippingStatus;
+    setOrder((prev: any) => {
+      if (!prev) return prev;
+      return { ...prev, shippingStatus: newStatus };
+    });
+
+    try {
+      const response = await fetch(`/api/orders/${params?.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shippingStatus: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update shipping status");
+      }
+
+      toast({
+        title: "Shipping Updated",
+        description: `Shipping status changed to ${newStatus}`,
+      });
+    } catch (error: any) {
+      setOrder((prev: any) => {
+        if (!prev) return prev;
+        return { ...prev, shippingStatus: previousStatus };
+      });
+      toast({
+        title: "Error",
+        description: error.message,
         variant: "destructive",
       });
     }
@@ -591,23 +857,51 @@ export default function Page() {
     if (role === "Admin") return true;
     if (
       role === "Quality" &&
-      item.frameCuttingStatus === "Ready to Package" &&
-      item.meshCuttingStatus === "Ready to Package"
+      item.frameCuttingStatus === "Complete" &&
+      item.meshCuttingStatus === "Complete"
+    )
+      return true;
+    return false;
+  };
+
+  const canEditPackagingStatus = (item: any): boolean => {
+    if (role === "Admin") return true;
+    if (
+      role === "Packaging" &&
+      item.assemblyStatus === "Complete"
+    )
+      return true;
+    return false;
+  };
+
+  const canEditAssemblyStatus = (item: any): boolean => {
+    if (role === "Admin") return true;
+    if (
+      role === "Assembly" &&
+      item.qualityStatus === "Complete"
     )
       return true;
     return false;
   };
 
   const getFrameCuttingStatuses = (): FrameCuttingStatus[] => {
-    return ["Pending", "Ready to Package"];
+    return ["Pending", "Complete"];
   };
 
   const getMeshCuttingStatuses = (): MeshCuttingStatus[] => {
-    return ["Pending", "Ready to Package"];
+    return ["Pending", "Complete"];
   };
 
   const getQualityStatuses = (): QualityStatus[] => {
-    return ["Pending", "Ready to Package", "Packed"];
+    return ["Pending", "Complete"];
+  };
+
+  const getPackagingStatuses = (): PackagingStatus[] => {
+    return ["Pending", "Complete"];
+  };
+
+  const getAssemblyStatuses = (): AssemblyStatus[] => {
+    return ["Pending", "Complete"];
   };
 
   return (
@@ -622,57 +916,122 @@ export default function Page() {
             className="gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Orders
+            {t('Back to Orders')}
           </Button>
-          {role === "Admin" && (
-            <Button
-              variant="destructive"
-              onClick={handleDeleteOrderClick}
-              className="gap-2"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete Order
-            </Button>
-          )}
+          <div className="flex gap-2 items-center">
+            <Select value={language} onValueChange={(val: any) => setLanguage(val)}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tr">Turkish</SelectItem>
+                <SelectItem value="en">English</SelectItem>
+              </SelectContent>
+            </Select>
+            {(role === "Packaging" || role === "Admin" || role === "Shipping") && (
+              <Button
+                variant="outline"
+                onClick={() => exportPackagingOrderToPDF(order)}
+                className="gap-2"
+              >
+                <Printer className="h-4 w-4" />
+                {t('Print Order')}
+              </Button>
+            )}
+            {role === "Admin" && (
+              <Button
+                variant="destructive"
+                onClick={handleDeleteOrderClick}
+                className="gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                {t('Delete Order')}
+              </Button>
+            )}
+          </div>
         </div>
 
         <Card>
           <CardContent className="pt-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <p className="text-sm text-muted-foreground">Order Number</p>
+                <p className="text-sm text-muted-foreground">{t('Order Number')}</p>
                 <p className="text-2xl font-bold">{order.orderNumber}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Order Date</p>
+                <p className="text-sm text-muted-foreground">{t('First Name')}</p>
+                <p className="text-lg font-semibold">
+                  {order.firstName ||
+                    order.customer?.firstName ||
+                    order.customer?.first_name ||
+                    order.billingAddress?.first_name ||
+                    order.raw?.customer?.firstName ||
+                    "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">{t('Last Name')}</p>
+                <p className="text-lg font-semibold">
+                  {order.lastName ||
+                    order.customer?.lastName ||
+                    order.customer?.last_name ||
+                    order.billingAddress?.last_name ||
+                    order.raw?.customer?.lastName ||
+                    "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">{t('Order Date')}</p>
                 <p className="text-lg font-semibold">
                   {format(order.orderDate, "dd/MM/yyyy")}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Store</p>
+                <p className="text-sm text-muted-foreground">{t('Store')}</p>
                 <Badge variant="outline" className="text-lg">
                   {order.store}
                 </Badge>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Items</p>
+                <p className="text-sm text-muted-foreground">{t('Items')}</p>
                 <p className="text-lg font-semibold">
-                  {order.items.length} item{order.items.length !== 1 ? "s" : ""}
+                  {order.items.length} {t('item')}{order.items.length !== 1 ? "s" : ""}
                 </p>
               </div>
+              {(role === "Admin" || role === "Shipping") && (
+                <div>
+                  <p className="text-sm text-muted-foreground">{t('Shipping Status')}</p>
+                  <Select
+                    value={order.shippingStatus || "Pending"}
+                    onValueChange={handleShippingStatusChange}
+                    disabled={
+                      role === "Shipping" &&
+                      !order.items.every((item: any) => item.packagingStatus === "Complete")
+                    }
+                  >
+                    <SelectTrigger className="w-[140px] mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="Packed">Packed</SelectItem>
+                      <SelectItem value="In Transit">In Transit</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
         <div className="space-y-4">
-          <h3 className="text-xl font-bold">Order Items</h3>
+          <h3 className="text-xl font-bold">{t('Order Items')}</h3>
 
           {order.items.map((item: any, index: number) => (
             <div key={item.id} className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="text-lg font-semibold">
-                  Item {index + 1}
+                  {t('Item')} {index + 1}
                   {item.productTitle && (
                     <span className="text-sm font-normal text-muted-foreground ml-2">
                       - {item.productTitle}
@@ -680,10 +1039,10 @@ export default function Page() {
                   )}
                 </h4>
                 <div className="flex items-center gap-4">
-                  {(role === "Frame Cutting" || role === "Admin") && (
+                  {(role === "Frame Cutting" || role === "Admin" || role === "Shipping") && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        Frame:
+                        {t('Frame')}:
                       </span>
                       <Select
                         value={item.frameCuttingStatus}
@@ -693,7 +1052,7 @@ export default function Page() {
                             value as FrameCuttingStatus
                           )
                         }
-                        disabled={!canEditFrameCuttingStatus(item)}
+                        disabled={role === "Shipping" || !canEditFrameCuttingStatus(item)}
                       >
                         <SelectTrigger className="w-[180px]">
                           <SelectValue />
@@ -709,10 +1068,10 @@ export default function Page() {
                     </div>
                   )}
 
-                  {(role === "Mesh Cutting" || role === "Admin") && (
+                  {(role === "Mesh Cutting" || role === "Admin" || role === "Shipping") && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        Mesh:
+                        {t('Mesh')}:
                       </span>
                       <Select
                         value={item.meshCuttingStatus}
@@ -722,7 +1081,7 @@ export default function Page() {
                             value as MeshCuttingStatus
                           )
                         }
-                        disabled={!canEditMeshCuttingStatus(item)}
+                        disabled={role === "Shipping" || !canEditMeshCuttingStatus(item)}
                       >
                         <SelectTrigger className="w-[180px]">
                           <SelectValue />
@@ -738,10 +1097,10 @@ export default function Page() {
                     </div>
                   )}
 
-                  {(role === "Quality" || role === "Admin") && (
+                  {(role === "Quality" || role === "Admin" || role === "Shipping") && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        Quality:
+                        {t('Quality')}:
                       </span>
                       <Select
                         value={item.qualityStatus}
@@ -751,13 +1110,71 @@ export default function Page() {
                             value as QualityStatus
                           )
                         }
-                        disabled={!canEditQualityStatus(item)}
+                        disabled={role === "Shipping" || !canEditQualityStatus(item)}
                       >
                         <SelectTrigger className="w-[180px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {getQualityStatuses().map((status) => (
+                            <SelectItem key={status} value={status}>
+                              {status}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {(role === "Assembly" || role === "Admin" || role === "Shipping") && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        {t('Assembly')}:
+                      </span>
+                      <Select
+                        value={item.assemblyStatus}
+                        onValueChange={(value) =>
+                          handleAssemblyStatusChange(
+                            item.id,
+                            value as AssemblyStatus
+                          )
+                        }
+                        disabled={role === "Shipping" || !canEditAssemblyStatus(item)}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getAssemblyStatuses().map((status) => (
+                            <SelectItem key={status} value={status}>
+                              {status}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {(role === "Packaging" || role === "Admin" || role === "Shipping") && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        {t('Packaging')}:
+                      </span>
+                      <Select
+                        value={item.packagingStatus}
+                        onValueChange={(value) =>
+                          handlePackagingStatusChange(
+                            item.id,
+                            value as PackagingStatus
+                          )
+                        }
+                        disabled={role === "Shipping" || !canEditPackagingStatus(item)}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getPackagingStatuses().map((status) => (
                             <SelectItem key={status} value={status}>
                               {status}
                             </SelectItem>
@@ -793,7 +1210,23 @@ export default function Page() {
                 />
               )}
 
-              {role === "Admin" && (
+              {role === "Assembly" && (
+                <AssembleView
+                  item={item}
+                  store={order.store}
+                  itemNumber={index + 1}
+                />
+              )}
+
+              {role === "Packaging" && (
+                <PackagingView
+                  item={item}
+                  store={order.store}
+                  itemNumber={index + 1}
+                />
+              )}
+
+              {(role === "Admin" || role === "Shipping") && (
                 <>
                   <SawingView
                     item={item}
@@ -810,17 +1243,29 @@ export default function Page() {
                     store={order.store}
                     itemNumber={index + 1}
                   />
+                  <AssembleView
+                    item={item}
+                    store={order.store}
+                    itemNumber={index + 1}
+                    showReferences={false}
+                  />
+                  <PackagingView
+                    item={item}
+                    store={order.store}
+                    itemNumber={index + 1}
+                  />
                 </>
               )}
             </div>
           ))}
         </div>
 
-        {(role === "Quality" || role === "Admin") && (
+        {(role === "Packaging" || role === "Admin" || role === "Shipping") && (
           <BoxManagement
             order={order}
             onAddBox={handleAddBox}
             onDeleteBox={handleDeleteBox}
+            readOnly={role === "Shipping"}
           />
         )}
       </main>
@@ -834,9 +1279,9 @@ export default function Page() {
                 <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
               </div>
               <div>
-                <AlertDialogTitle className="text-xl">Delete Order?</AlertDialogTitle>
+                <AlertDialogTitle className="text-xl">{t('Delete Order?')}</AlertDialogTitle>
                 <AlertDialogDescription className="mt-1">
-                  This action cannot be undone.
+                  {t('This action cannot be undone.')}
                 </AlertDialogDescription>
               </div>
             </div>
@@ -844,20 +1289,20 @@ export default function Page() {
 
           <div className="py-4">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete order{" "}
+              {t('Are you sure you want to delete order')}{" "}
               <span className="font-semibold text-foreground">#{order?.orderNumber}</span>?
-              All associated items and boxes will be permanently removed.
+              {t('All associated items and boxes will be permanently removed.')}
             </p>
           </div>
 
           <AlertDialogFooter className="gap-2 sm:gap-0">
-            <AlertDialogCancel className="mt-0">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="mt-0">{t('Cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteOrder}
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Delete Order
+              {t('Delete Order')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
