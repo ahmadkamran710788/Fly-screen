@@ -3,6 +3,12 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { OrderModel } from "@/models/Order";
 import { requireAuth } from "@/lib/auth-helper";
 import { broadcastOrderUpdate } from "../../subscribe/route";
+import { revalidatePath } from "next/cache";
+
+// Force dynamic rendering for serverless
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 10;
 
 // Helper function to calculate overall order status from all items
 function calculateOrderStatus(
@@ -10,18 +16,30 @@ function calculateOrderStatus(
 ): "Pending" | "In Progress" | "Completed" {
   if (!lineItems || lineItems.length === 0) return "Pending";
 
-  // Check if all items are packed
+  // Check if all items are finished (all 5 statuses are Complete)
   const allPacked = lineItems.every(
-    (item) => item.qualityStatus === "Packed"
+    (item) =>
+      item.frameCuttingStatus === "Complete" &&
+      item.meshCuttingStatus === "Complete" &&
+      item.qualityStatus === "Complete" &&
+      item.assemblyStatus === "Complete" &&
+      item.packagingStatus === "Complete"
   );
-  if (allPacked) return "Completed";
 
-  // Check if all items are still pending (all 3 statuses are pending)
+  if (allPacked) {
+    // Return In Progress because final "Completed" status depends on Shipping Status being "In Transit"
+    // The Order Model pre-save hook will handle the final transition if Shipping is In Transit.
+    return "In Progress";
+  }
+
+  // Check if all items are still pending (all 5 statuses are Pending)
   const allPending = lineItems.every(
     (item) =>
       item.frameCuttingStatus === "Pending" &&
       item.meshCuttingStatus === "Pending" &&
-      item.qualityStatus === "Pending"
+      item.qualityStatus === "Pending" &&
+      item.assemblyStatus === "Pending" &&
+      item.packagingStatus === "Pending"
   );
   if (allPending) return "Pending";
 
@@ -42,7 +60,7 @@ export async function PATCH(
     await connectToDatabase();
 
     const body = await req.json();
-    const { frameCuttingStatus, meshCuttingStatus, qualityStatus, role } = body;
+    const { frameCuttingStatus, meshCuttingStatus, qualityStatus, assemblyStatus, packagingStatus, role } = body;
 
     // Find the order
     const order = await OrderModel.findById(id);
@@ -65,36 +83,36 @@ export async function PATCH(
     const isAdmin = user.role === "Admin" || role === "Admin";
 
     if (!isAdmin) {
-      // Validation: Check if Quality status is "Packed"
-      // If packed, Frame Cutting and Mesh Cutting cannot change their statuses
-      if (item.qualityStatus === "Packed") {
-        if (frameCuttingStatus !== undefined || meshCuttingStatus !== undefined) {
+      // Validation: Quality status can only be Complete if Frame and Mesh are Complete
+      if (qualityStatus === "Complete") {
+        const currentFrameStatus = frameCuttingStatus ?? item.frameCuttingStatus;
+        const currentMeshStatus = meshCuttingStatus ?? item.meshCuttingStatus;
+
+        if (currentFrameStatus !== "Complete" || currentMeshStatus !== "Complete") {
           return NextResponse.json(
-            {
-              error:
-                "Cannot change Frame or Mesh status when item is already Packed",
-            },
+            { error: "Quality can only be completed when both Frame and Mesh are Complete" },
             { status: 400 }
           );
         }
       }
 
-      // Validation: Quality can only change status if both Frame and Mesh are "Ready to Package"
-      if (qualityStatus !== undefined && qualityStatus !== "Pending") {
-        const currentFrameStatus =
-          frameCuttingStatus ?? item.frameCuttingStatus ?? "Pending";
-        const currentMeshStatus =
-          meshCuttingStatus ?? item.meshCuttingStatus ?? "Pending";
-
-        if (
-          currentFrameStatus !== "Ready to Package" ||
-          currentMeshStatus !== "Ready to Package"
-        ) {
+      // Validation: Assembly status can only be Complete if Quality is Complete
+      if (assemblyStatus === "Complete") {
+        const currentQualityStatus = qualityStatus ?? item.qualityStatus;
+        if (currentQualityStatus !== "Complete") {
           return NextResponse.json(
-            {
-              error:
-                "Quality status can only be changed when both Frame and Mesh cutting are Ready to Package",
-            },
+            { error: "Assembly can only be completed when Quality is Complete" },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Validation: Packaging status can only be Complete if Assembly is Complete
+      if (packagingStatus === "Complete") {
+        const currentAssemblyStatus = assemblyStatus ?? item.assemblyStatus;
+        if (currentAssemblyStatus !== "Complete") {
+          return NextResponse.json(
+            { error: "Packaging can only be completed when Assembly is Complete" },
             { status: 400 }
           );
         }
@@ -111,6 +129,12 @@ export async function PATCH(
     if (qualityStatus !== undefined) {
       order.lineItems[itemIndex].qualityStatus = qualityStatus;
     }
+    if (assemblyStatus !== undefined) {
+      order.lineItems[itemIndex].assemblyStatus = assemblyStatus;
+    }
+    if (packagingStatus !== undefined) {
+      order.lineItems[itemIndex].packagingStatus = packagingStatus;
+    }
 
     // Calculate and update overall order status
     order.status = calculateOrderStatus(order.lineItems);
@@ -126,9 +150,20 @@ export async function PATCH(
       frameCuttingStatus: order.lineItems[itemIndex].frameCuttingStatus,
       meshCuttingStatus: order.lineItems[itemIndex].meshCuttingStatus,
       qualityStatus: order.lineItems[itemIndex].qualityStatus,
+      assemblyStatus: order.lineItems[itemIndex].assemblyStatus,
+      packagingStatus: order.lineItems[itemIndex].packagingStatus,
       orderStatus: order.status,
+      shippingStatus: order.shippingStatus,
       timestamp: new Date().toISOString(),
     });
+
+    // Revalidate orders listing and detail pages to ensure fresh data
+    try {
+      revalidatePath("/api/orders");
+      revalidatePath(`/api/orders/${id}`);
+    } catch (error) {
+      console.warn("⚠️ Revalidation warning (non-critical):", error);
+    }
 
     return NextResponse.json({
       success: true,

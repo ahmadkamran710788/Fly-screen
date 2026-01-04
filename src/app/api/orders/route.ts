@@ -4,6 +4,11 @@ import { OrderModel } from "@/models/Order";
 import { requireAuth } from "@/lib/auth-helper";
 import { getDayRangeInUTC } from "@/lib/timezone";
 
+// Force dynamic rendering and optimize for serverless
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 10; // Vercel Hobby max
+
 export async function POST(req: NextRequest) {
   try {
     // Authenticate user and connect to DB
@@ -15,7 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { orderNumber, orderDate, store, items } = body;
+    const { orderNumber, orderDate, store, items, firstName, lastName } = body;
 
     // Validate required fields
     if (
@@ -158,6 +163,11 @@ export async function POST(req: NextRequest) {
       shopifyId: `manual-${Date.now()}`,
       name: `#${orderNumber}`,
       email: "manual@order.com",
+      customer: {
+        firstName: firstName || "",
+        lastName: lastName || "",
+        email: "manual@order.com",
+      },
       phone: "",
       note: "Manually created order",
       financialStatus: "paid",
@@ -226,6 +236,8 @@ export async function GET(req: NextRequest) {
     const orderDate = searchParams.get("orderDate");
     const deliveryDate = searchParams.get("deliveryDate");
     const deadlineStatus = searchParams.get("deadlineStatus");
+    const minWeight = searchParams.get("minWeight");
+    const maxWeight = searchParams.get("maxWeight");
 
     // Calculate skip
     const skip = (page - 1) * limit;
@@ -405,24 +417,37 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Filter by weight range
+    if (minWeight || maxWeight) {
+      const weightCondition: any = {};
+      if (minWeight) weightCondition.$gte = parseFloat(minWeight);
+      if (maxWeight) weightCondition.$lte = parseFloat(maxWeight);
+      andConditions.push({ totalWeight: weightCondition });
+    }
+
     // Combine all conditions with $and if there are any
     if (andConditions.length > 0) {
       filterQuery.$and = andConditions;
     }
 
-    // Fetch orders and total count in parallel
-    const [orders, totalCount] = await Promise.all([
-      OrderModel.find(filterQuery)
-        .select(
-          "orderNumber shopifyId status storeKey lineItems total createdAt processedAt name raw boxes"
-        )
-        .sort(sortOptions)
-        .skip(skip)
-        .limit(limit)
-        .lean()
-        .exec(),
-      OrderModel.countDocuments(filterQuery),
-    ]);
+    // Fetch orders and total count in parallel with timeout protection
+    // Use lean() for better performance and add index hints
+    const queryPromise = OrderModel.find(filterQuery)
+      .select(
+        "orderNumber shopifyId status storeKey lineItems total createdAt processedAt name raw boxes customer shippingStatus totalWeight"
+      )
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(limit)
+      .lean()
+      .maxTimeMS(8000) // 8 second MongoDB timeout (leave 2s for processing)
+      .exec();
+
+    const countPromise = OrderModel.countDocuments(filterQuery)
+      .maxTimeMS(8000)
+      .exec();
+
+    const [orders, totalCount] = await Promise.all([queryPromise, countPromise]);
 
     const totalPages = Math.ceil(totalCount / limit);
 
@@ -442,7 +467,8 @@ export async function GET(req: NextRequest) {
       },
       {
         headers: {
-          "Cache-Control": "s-maxage=60, stale-while-revalidate=300",
+          // Disable caching for dynamic order data to prevent stale data on Vercel
+          "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
         },
       }
     );

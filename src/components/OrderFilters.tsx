@@ -10,10 +10,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, X } from "lucide-react";
+import { Search, X, Truck } from "lucide-react";
 
 interface OrderFiltersProps {
   onFilterChange: (filters: FilterState) => void;
+  role: string | null;
 }
 
 export interface FilterState {
@@ -23,9 +24,10 @@ export interface FilterState {
   orderDate: string;
   deliveryDate: string;
   deadlineStatus: string;
+  maxWeight: string;
 }
 
-const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
+const OrderFilters = ({ onFilterChange, role }: OrderFiltersProps) => {
   const [filters, setFilters] = useState<FilterState>({
     orderNumber: "",
     stores: [],
@@ -33,6 +35,7 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
     orderDate: "",
     deliveryDate: "",
     deadlineStatus: "all",
+    maxWeight: "",
   });
 
   // Debounce timeout ref for text input
@@ -59,6 +62,7 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
       orderDate: "",
       deliveryDate: "",
       deadlineStatus: "all",
+      maxWeight: "",
     };
     setFilters(resetFilters);
     onFilterChange(resetFilters);
@@ -244,6 +248,41 @@ const OrderFilters = ({ onFilterChange }: OrderFiltersProps) => {
               </SelectContent>
             </Select>
           </div>
+
+          {(role === "Admin" || role === "Shipping") && (
+            <div className="flex items-end">
+              <Button
+                type="button"
+                variant={
+                  filters.maxWeight === "1200" &&
+                    filters.statuses.includes("Completed")
+                    ? "default"
+                    : "outline"
+                }
+                onClick={() => {
+                  const isActive =
+                    filters.maxWeight === "1200" &&
+                    filters.statuses.includes("Completed");
+                  if (isActive) {
+                    updateFilters({ maxWeight: "", statuses: [] });
+                  } else {
+                    updateFilters({
+                      maxWeight: "1200",
+                      statuses: ["Completed"],
+                    });
+                  }
+                }}
+                className={`w-full gap-2 hover:cursor-pointer ${filters.maxWeight === "1200" &&
+                    filters.statuses.includes("Completed")
+                    ? "bg-green-600 hover:bg-green-700 text-white border-none shadow-md"
+                    : ""
+                  }`}
+              >
+                <Truck className="h-4 w-4" />
+                Ready to Ship
+              </Button>
+            </div>
+          )}
 
           <div className="flex items-end">
             <Button

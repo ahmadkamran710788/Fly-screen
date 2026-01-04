@@ -5,18 +5,30 @@ import { formatDateGMT1 } from './timezone';
 
 // Calculate overall status of an order
 const getOverallStatus = (order: Order): string => {
-  // Check if all items have qualityStatus === "Packed"
-  const allPacked = order.items?.every((item) => item.qualityStatus === "Packed");
+  // Check if all items are completely finished (all 5 stages are Complete)
+  const allPacked = order.items?.every(
+    (item) =>
+      item.frameCuttingStatus === "Complete" &&
+      item.meshCuttingStatus === "Complete" &&
+      item.qualityStatus === "Complete" &&
+      item.assemblyStatus === "Complete" &&
+      item.packagingStatus === "Complete"
+  );
 
-  // Check if all items are still pending (all 3 statuses are pending)
+  // Check if all items are still pending (all 5 statuses are pending)
   const allPending = order.items?.every(
     (item) =>
       item.frameCuttingStatus === "Pending" &&
       item.meshCuttingStatus === "Pending" &&
-      item.qualityStatus === "Pending"
+      item.qualityStatus === "Pending" &&
+      item.assemblyStatus === "Pending" &&
+      item.packagingStatus === "Pending"
   );
 
-  if (allPacked) return "Completed";
+  if (allPacked) {
+    if (order.shippingStatus === "In Transit") return "Completed";
+    return "In Progress";
+  }
   if (allPending) return "Pending";
   return "In Progress";
 };
@@ -59,6 +71,9 @@ const createAllOrdersSheet = (orders: Order[]) => {
     'Frame Cutting Status',
     'Mesh Cutting Status',
     'Quality Status',
+    'Box',
+    'Box Dimensions (LxWxH)',
+    'Box Weight (kg)',
     'Overall Status',
   ]);
 
@@ -66,6 +81,12 @@ const createAllOrdersSheet = (orders: Order[]) => {
   orders.forEach((order) => {
     const overallStatus = getOverallStatus(order);
     order.items.forEach((item) => {
+      const boxIndex = order.boxes?.findIndex(box => box.items.includes(item.id)) ?? -1;
+      const box = boxIndex !== -1 && order.boxes ? order.boxes[boxIndex] : null;
+      const boxName = boxIndex !== -1 ? `Box ${boxIndex + 1}` : '-';
+      const boxDimensions = box ? `${box.length}x${box.width}x${box.height}` : '-';
+      const boxWeight = box ? box.weight : '-';
+
       data.push([
         order.orderNumber,
         formatDateGMT1(order.orderDate),
@@ -76,6 +97,9 @@ const createAllOrdersSheet = (orders: Order[]) => {
         item.frameCuttingStatus,
         item.meshCuttingStatus,
         item.qualityStatus,
+        boxName,
+        boxDimensions,
+        boxWeight,
         overallStatus,
       ]);
     });
@@ -166,6 +190,8 @@ const createMeshCuttingSheet = (orders: Order[]) => {
   return data;
 };
 
+
+
 // Export for Admin: 3 sheets (All Orders, Frame Cutting Detail, Mesh Cutting Details)
 export const exportAdminToExcel = (orders: Order[]) => {
   const wb = XLSX.utils.book_new();
@@ -184,6 +210,8 @@ export const exportAdminToExcel = (orders: Order[]) => {
   const meshCuttingData = createMeshCuttingSheet(orders);
   const ws3 = XLSX.utils.aoa_to_sheet(meshCuttingData);
   XLSX.utils.book_append_sheet(wb, ws3, 'Mesh Cutting Details');
+
+
 
   // Download
   XLSX.writeFile(wb, `Admin_Orders_Export_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -232,3 +260,19 @@ export const exportQualityToExcel = (orders: Order[]) => {
   // Download
   XLSX.writeFile(wb, `Quality_Export_${new Date().toISOString().split('T')[0]}.xlsx`);
 };
+
+// Export for Packing: 2 sheets (All Orders, Box Details)
+export const exportPackingToExcel = (orders: Order[]) => {
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: All Orders
+  const allOrdersData = createAllOrdersSheet(orders);
+  const ws1 = XLSX.utils.aoa_to_sheet(allOrdersData);
+  XLSX.utils.book_append_sheet(wb, ws1, 'All Orders');
+
+
+
+  // Download
+  XLSX.writeFile(wb, `Packing_Export_${new Date().toISOString().split('T')[0]}.xlsx`);
+};
+

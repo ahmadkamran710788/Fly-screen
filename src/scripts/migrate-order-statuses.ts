@@ -9,14 +9,14 @@
  * - item.meshCutComplete: boolean
  *
  * NEW SYSTEM:
- * - item.frameCuttingStatus: "Pending" | "Ready to Package"
- * - item.meshCuttingStatus: "Pending" | "Ready to Package"
+ * - item.frameCuttingStatus: "Pending" | "Complete"
+ * - item.meshCuttingStatus: "Pending" | "Complete"
  * - item.qualityStatus: "Pending" | "Ready to Package" | "Packed"
  * - order.status: "Pending" | "In Progress" | "Completed"
  *
  * MIGRATION LOGIC:
- * 1. If frameCutComplete === true OR old status includes "Frame" → frameCuttingStatus = "Ready to Package"
- * 2. If meshCutComplete === true OR old status includes "Mesh" → meshCuttingStatus = "Ready to Package"
+ * 1. If frameCutComplete === true OR old status includes "Frame" → frameCuttingStatus = "Complete"
+ * 2. If meshCutComplete === true OR old status includes "Mesh" → meshCuttingStatus = "Complete"
  * 3. Map old status to qualityStatus:
  *    - "Packed" or "Shipped" → "Packed"
  *    - "Ready for Packaging" → "Ready to Package"
@@ -76,15 +76,15 @@ function migrateItem(item: any) {
   const oldMeshCutComplete = item.meshCutComplete || false;
 
   // Determine frameCuttingStatus
-  let frameCuttingStatus: "Pending" | "Ready to Package" = "Pending";
+  let frameCuttingStatus: "Pending" | "Complete" = "Pending";
   if (oldFrameCutComplete || oldStatus.toLowerCase().includes("frame")) {
-    frameCuttingStatus = "Ready to Package";
+    frameCuttingStatus = "Complete";
   }
 
   // Determine meshCuttingStatus
-  let meshCuttingStatus: "Pending" | "Ready to Package" = "Pending";
+  let meshCuttingStatus: "Pending" | "Complete" = "Pending";
   if (oldMeshCutComplete || oldStatus.toLowerCase().includes("mesh")) {
-    meshCuttingStatus = "Ready to Package";
+    meshCuttingStatus = "Complete";
   }
 
   // Determine qualityStatus

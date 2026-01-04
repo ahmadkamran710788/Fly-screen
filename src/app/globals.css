@@ -3,8 +3,10 @@
 /* Light blue product theme */
 :root {
   /* base */
-  --background: #f6f9ff;           /* very light blue/gray */
-  --foreground: #0b1220;           /* slate-950 */
+  --background: #f6f9ff;
+  /* very light blue/gray */
+  --foreground: #0b1220;
+  /* slate-950 */
 
   /* surfaces */
   --card: #ffffff;
@@ -13,33 +15,47 @@
   --popover-foreground: #0b1220;
 
   /* brand + accents */
-  --primary: #3b82f6;              /* blue-500 */
+  --primary: #3b82f6;
+  /* blue-500 */
   --primary-foreground: #ffffff;
-  --secondary: #eef2ff;            /* indigo-50 */
+  --secondary: #eef2ff;
+  /* indigo-50 */
   --secondary-foreground: #0b1220;
-  --muted: #f1f5f9;                /* slate-100 */
-  --muted-foreground: #64748b;     /* slate-500 */
-  --accent: #f1f5ff;               /* very light blue */
+  --muted: #f1f5f9;
+  /* slate-100 */
+  --muted-foreground: #64748b;
+  /* slate-500 */
+  --accent: #f1f5ff;
+  /* very light blue */
   --accent-foreground: #0b1220;
-  --destructive: #ef4444;          /* red-500 */
+  --destructive: #ef4444;
+  /* red-500 */
   --destructive-foreground: #ffffff;
-  --success: #22c55e;              /* green-500 */
+  --success: #22c55e;
+  /* green-500 */
   --success-foreground: #ffffff;
-  --warning: #f59e0b;              /* amber-500 */
+  --warning: #f59e0b;
+  /* amber-500 */
   --warning-foreground: #ffffff;
 
   /* ui */
-  --border: #e5e7eb;               /* gray-200 */
-  --input: #e5e7eb;                /* gray-200 */
-  --ring: #3b82f6;                 /* blue-500 */
+  --border: #e5e7eb;
+  /* gray-200 */
+  --input: #000000;
+  /* black */
+  --ring: #3b82f6;
+  /* blue-500 */
   --radius: 0.5rem;
 
   /* sidebar */
   --sidebar-background: #ffffff;
-  --sidebar-foreground: #1f2937;   /* gray-800 */
-  --sidebar-primary: #111827;      /* gray-900 */
+  --sidebar-foreground: #1f2937;
+  /* gray-800 */
+  --sidebar-primary: #111827;
+  /* gray-900 */
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f3f4f6;       /* gray-100 */
+  --sidebar-accent: #f3f4f6;
+  /* gray-100 */
   --sidebar-accent-foreground: #111827;
   --sidebar-border: #e5e7eb;
   --sidebar-ring: #3b82f6;
@@ -84,21 +100,27 @@
 
 /* Dark mode (only when .dark class is present) */
 .dark {
-  --background: #0b1220;         /* near slate-950 with blue tint */
+  --background: #0b1220;
+  /* near slate-950 with blue tint */
   --foreground: #e5e7eb;
-  --card: #0f172a;               /* slate-900 */
+  --card: #0f172a;
+  /* slate-900 */
   --card-foreground: #e5e7eb;
   --popover: #0f172a;
   --popover-foreground: #e5e7eb;
-  --secondary: #111827;          /* gray-900 */
+  --secondary: #111827;
+  /* gray-900 */
   --secondary-foreground: #e5e7eb;
   --muted: #0f172a;
-  --muted-foreground: #94a3b8;   /* slate-400 */
+  --muted-foreground: #94a3b8;
+  /* slate-400 */
   --accent: #0b1329;
   --accent-foreground: #e5e7eb;
-  --border: #1f2937;             /* gray-800 */
+  --border: #1f2937;
+  /* gray-800 */
   --input: #1f2937;
-  --ring: #60a5fa;               /* blue-400 */
+  --ring: #60a5fa;
+  /* blue-400 */
   --sidebar-background: #0f172a;
   --sidebar-foreground: #e5e7eb;
   --sidebar-primary: #3b82f6;
@@ -116,16 +138,17 @@ body {
 }
 
 /* Subtle app-wide background treatment */
-html, body {
+html,
+body {
   min-height: 100%;
 }
 
 /* Layer gentle radial and conic gradients for a premium feel */
 body {
   background:
-    radial-gradient(1200px 800px at 80% -10%, rgba(59,130,246,0.08), transparent 60%),
-    radial-gradient(900px 600px at -10% 20%, rgba(99,102,241,0.06), transparent 55%),
-    conic-gradient(from 210deg at 10% -10%, rgba(59,130,246,0.04), transparent 25%),
+    radial-gradient(1200px 800px at 80% -10%, rgba(59, 130, 246, 0.08), transparent 60%),
+    radial-gradient(900px 600px at -10% 20%, rgba(99, 102, 241, 0.06), transparent 55%),
+    conic-gradient(from 210deg at 10% -10%, rgba(59, 130, 246, 0.04), transparent 25%),
     var(--background);
 }
 

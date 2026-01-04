@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { OrderModel } from "@/models/Order";
 import { requireAuth } from "@/lib/auth-helper";
+import { revalidatePath } from "next/cache";
+
+// Force dynamic rendering for serverless
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 10;
 
 // DELETE - Remove a box from an order
 export async function DELETE(
@@ -34,6 +40,14 @@ export async function DELETE(
 
     // Save the order
     await order.save();
+
+    // Revalidate to ensure fresh data
+    try {
+      revalidatePath("/api/orders");
+      revalidatePath(`/api/orders/${id}`);
+    } catch (error) {
+      console.warn("⚠️ Revalidation warning (non-critical):", error);
+    }
 
     return NextResponse.json({
       success: true,
@@ -92,6 +106,14 @@ export async function PATCH(
 
     // Save the order
     await order.save();
+
+    // Revalidate to ensure fresh data
+    try {
+      revalidatePath("/api/orders");
+      revalidatePath(`/api/orders/${id}`);
+    } catch (error) {
+      console.warn("⚠️ Revalidation warning (non-critical):", error);
+    }
 
     return NextResponse.json({
       success: true,

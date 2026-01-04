@@ -6,18 +6,31 @@ import { formatDateGMT1 } from './timezone';
 
 // Calculate overall status of an order
 const getOverallStatus = (order: Order): string => {
-  // Check if all items have qualityStatus === "Packed"
-  const allPacked = order.items?.every((item) => item.qualityStatus === "Packed");
+  if (!order) return "Pending";
+  // Check if all items are completely finished (all 5 stages are Complete)
+  const allPacked = order.items?.every(
+    (item) =>
+      item.frameCuttingStatus === "Complete" &&
+      item.meshCuttingStatus === "Complete" &&
+      item.qualityStatus === "Complete" &&
+      item.assemblyStatus === "Complete" &&
+      item.packagingStatus === "Complete"
+  );
 
-  // Check if all items are still pending (all 3 statuses are pending)
+  // Check if all items are still pending (all 5 statuses are pending)
   const allPending = order.items?.every(
     (item) =>
       item.frameCuttingStatus === "Pending" &&
       item.meshCuttingStatus === "Pending" &&
-      item.qualityStatus === "Pending"
+      item.qualityStatus === "Pending" &&
+      item.assemblyStatus === "Pending" &&
+      item.packagingStatus === "Pending"
   );
 
-  if (allPacked) return "Completed";
+  if (allPacked) {
+    if (order.shippingStatus === "In Transit") return "Completed";
+    return "In Progress";
+  }
   if (allPending) return "Pending";
   return "In Progress";
 };
@@ -52,6 +65,12 @@ const addAllOrdersTable = (doc: jsPDF, orders: Order[], startY: number = 20) => 
   orders.forEach((order) => {
     const overallStatus = getOverallStatus(order);
     order.items.forEach((item) => {
+      const boxIndex = order.boxes?.findIndex(box => box.items.includes(item.id)) ?? -1;
+      const box = boxIndex !== -1 && order.boxes ? order.boxes[boxIndex] : null;
+      const boxName = boxIndex !== -1 ? `Box ${boxIndex + 1}` : '-';
+      const boxDimensions = box ? `${box.length}x${box.width}x${box.height}` : '-';
+      const boxWeight = box ? box.weight : '-';
+
       tableData.push([
         order.orderNumber,
         formatDateGMT1(order.orderDate),
@@ -62,6 +81,9 @@ const addAllOrdersTable = (doc: jsPDF, orders: Order[], startY: number = 20) => 
         item.frameCuttingStatus,
         item.meshCuttingStatus,
         item.qualityStatus,
+        boxName,
+        boxDimensions,
+        boxWeight,
         overallStatus,
       ]);
     });
@@ -80,12 +102,15 @@ const addAllOrdersTable = (doc: jsPDF, orders: Order[], startY: number = 20) => 
         'Frame Status',
         'Mesh Status',
         'Quality Status',
+        'Box',
+        'Box Dims',
+        'Box Kg',
         'Overall Status',
       ],
     ],
     body: tableData,
     theme: 'grid',
-    styles: { fontSize: 8, cellPadding: 2 },
+    styles: { fontSize: 7, cellPadding: 2 },
     headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
   });
 
@@ -188,6 +213,9 @@ const addMeshCuttingTable = (doc: jsPDF, orders: Order[], startY: number = 20) =
   return doc;
 };
 
+
+
+
 // Export for Admin: 3 pages (All Orders, Frame Cutting Detail, Mesh Cutting Details)
 export const exportAdminToPDF = (orders: Order[]) => {
   const doc = new jsPDF('landscape');
@@ -208,6 +236,8 @@ export const exportAdminToPDF = (orders: Order[]) => {
   doc.setFontSize(16);
   doc.text('Mesh Cutting Details', 14, 15);
   addMeshCuttingTable(doc, orders, 20);
+
+
 
   // Download
   doc.save(`Admin_Orders_Export_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -289,4 +319,72 @@ export const exportMeshCuttingOnlyToPDF = (orders: Order[]) => {
   addMeshCuttingTable(doc, orders, 20);
 
   doc.save(`Mesh_Cutting_Detail_${new Date().toISOString().split('T')[0]}.pdf`);
+};
+
+// Export for Packing: 2 pages (All Orders, Box Details)
+export const exportPackingToPDF = (orders: Order[]) => {
+  const doc = new jsPDF('landscape');
+
+  // Page 1: All Orders
+  doc.setFontSize(16);
+  doc.text('All Orders', 14, 15);
+  addAllOrdersTable(doc, orders, 20);
+
+
+
+  // Download
+  doc.save(`Packing_Export_${new Date().toISOString().split('T')[0]}.pdf`);
+};
+
+// Export for Packaging: Simple order summary (Order Number, Name, Item Count)
+export const exportPackagingOrderToPDF = (order: Order) => {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: [100, 150] // label format
+  });
+
+  const firstName = order.firstName || "";
+  const lastName = order.lastName || "";
+  const fullName = `${firstName} ${lastName}`.trim() || "-";
+  const itemCount = order.items?.length || 0;
+
+  // Header - Order Number
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(14);
+  doc.setTextColor(100);
+  doc.text('Order Number', 10, 20);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  doc.setTextColor(0);
+  doc.text(order.orderNumber, 10, 32);
+
+  // Name
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(14);
+  doc.setTextColor(100);
+  doc.text('Name', 10, 50);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(0);
+  doc.text(fullName, 10, 62);
+
+  // Items
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(14);
+  doc.setTextColor(100);
+  doc.text('Items', 10, 80);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(0);
+  doc.text(`${itemCount} ${itemCount === 1 ? 'item' : 'items'}`, 10, 92);
+
+  // Open in new window for printing
+  doc.autoPrint();
+  const blob = doc.output('blob');
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
 };
