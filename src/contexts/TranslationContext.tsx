@@ -123,6 +123,13 @@ const translations = {
         "All associated items and boxes will be permanently removed.": "All associated items and boxes will be permanently removed.",
         "This action cannot be undone. This will permanently delete the box and its contents from this order.": "This action cannot be undone. This will permanently delete the box and its contents from this order.",
 
+        // Statuses
+        "Pending": "Pending",
+        "Complete": "Complete",
+        "In Progress": "In Progress",
+        "Completed": "Completed",
+        "In Transit": "In Transit",
+
         // Box Management
         "Box Details": "Box Details",
         "Add Box": "Add Box",

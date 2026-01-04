@@ -8,7 +8,7 @@ import { formatDateGMT1 } from './timezone';
 const getOverallStatus = (order: Order): string => {
   if (!order) return "Pending";
   // Check if all items are completely finished (all 5 stages are Complete)
-  const allPacked = order.items?.every(
+  const allStagesComplete = order.items?.every(
     (item) =>
       item.frameCuttingStatus === "Complete" &&
       item.meshCuttingStatus === "Complete" &&
@@ -27,8 +27,9 @@ const getOverallStatus = (order: Order): string => {
       item.packagingStatus === "Pending"
   );
 
-  if (allPacked) {
-    if (order.shippingStatus === "In Transit") return "Completed";
+  if (allStagesComplete) {
+    if (order.shippingStatus === "In Transit") return "In Transit";
+    if (order.shippingStatus === "Packed") return "Completed";
     return "In Progress";
   }
   if (allPending) return "Pending";

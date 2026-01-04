@@ -12,8 +12,9 @@ export const maxDuration = 10;
 
 // Helper function to calculate overall order status from all items
 function calculateOrderStatus(
-  lineItems: any[]
-): "Pending" | "In Progress" | "Completed" {
+  lineItems: any[],
+  shippingStatus?: string
+): "Pending" | "In Progress" | "Completed" | "In Transit" {
   if (!lineItems || lineItems.length === 0) return "Pending";
 
   // Check if all items are finished (all 5 statuses are Complete)
@@ -27,12 +28,12 @@ function calculateOrderStatus(
   );
 
   if (allPacked) {
-    // Return In Progress because final "Completed" status depends on Shipping Status being "In Transit"
-    // The Order Model pre-save hook will handle the final transition if Shipping is In Transit.
+    if (shippingStatus === "In Transit") return "In Transit";
+    if (shippingStatus === "Packed") return "Completed";
     return "In Progress";
   }
 
-  // Check if all items are still pending (all 5 statuses are Pending)
+  // Check if all items are still pending
   const allPending = lineItems.every(
     (item) =>
       item.frameCuttingStatus === "Pending" &&
@@ -43,7 +44,6 @@ function calculateOrderStatus(
   );
   if (allPending) return "Pending";
 
-  // Mixed statuses = In Progress
   return "In Progress";
 }
 
@@ -137,7 +137,7 @@ export async function PATCH(
     }
 
     // Calculate and update overall order status
-    order.status = calculateOrderStatus(order.lineItems);
+    order.status = calculateOrderStatus(order.lineItems, order.shippingStatus);
 
     // Save the order
     await order.save();

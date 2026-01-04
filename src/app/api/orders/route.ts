@@ -148,6 +148,8 @@ export async function POST(req: NextRequest) {
         frameCuttingStatus: item.frameCuttingStatus || "Pending",
         meshCuttingStatus: item.meshCuttingStatus || "Pending",
         qualityStatus: item.qualityStatus || "Pending",
+        assemblyStatus: item.assemblyStatus || "Pending", // Added for new status
+        packagingStatus: item.packagingStatus || "Pending", // Added for new status
       };
     });
 
@@ -177,7 +179,7 @@ export async function POST(req: NextRequest) {
       subtotalPrice: "0.00",
       totalDiscounts: "0.00",
       totalTax: "0.00",
-      status: "Pending",
+      status: "Pending", // Let pre-save hook calculate correct status if mixed
       lineItems,
       boxes: [],
       processedAt: orderDate ? new Date(orderDate) : new Date(),
@@ -245,19 +247,15 @@ export async function GET(req: NextRequest) {
     // Build sort object
     const sortOptions: Record<string, 1 | -1> = { [sortField]: sortDirection };
 
-    // Build filter query - use $and to combine multiple filters properly
-    const filterQuery: Record<string, any> = {};
+    // Build filter query conditions
     const andConditions: any[] = [];
+    const filterQuery: Record<string, any> = {};
 
     // Filter by order number (search in name field)
-    // Only match the order number itself, not store names or other fields
     if (orderNumber) {
       console.log("🔍 Searching by order number:", orderNumber);
-      // Escape special regex characters and match only the number part
       const escapedOrderNumber = orderNumber.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      // Match orders that have the exact order number (case insensitive)
-      // The name field typically looks like "#12345" so we match against the number part
-      filterQuery.name = { $regex: `#${escapedOrderNumber}`, $options: "i" };
+      andConditions.push({ name: { $regex: `#${escapedOrderNumber}`, $options: "i" } });
     }
 
     // Filter by stores (storeKey without the dot prefix)
@@ -266,15 +264,23 @@ export async function GET(req: NextRequest) {
       const storeArray = stores
         .split(",")
         .map((s) => s.trim().replace(/^\./, ""));
-      filterQuery.storeKey = { $in: storeArray };
+      andConditions.push({ storeKey: { $in: storeArray } });
     }
-
-    console.log("📊 Final filter query:", JSON.stringify(filterQuery, null, 2));
-
     // Filter by statuses
     if (statuses) {
       const statusArray = statuses.split(",").map((s) => s.trim());
-      filterQuery.status = { $in: statusArray };
+
+      // If "Pending" is in the filter, also include orders where status field is missing
+      if (statusArray.includes("Pending")) {
+        andConditions.push({
+          $or: [
+            { status: { $in: statusArray } },
+            { status: { $exists: false } }
+          ]
+        });
+      } else {
+        andConditions.push({ status: { $in: statusArray } });
+      }
     }
 
     // Filter by order date (using processedAt or createdAt as fallback)

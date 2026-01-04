@@ -41,13 +41,15 @@ async function getOrders(
   filters?: FilterState
 ) {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+  const isReadyToShip =
+    filters?.maxWeight === "1200" && filters?.statuses.includes("Completed");
 
   // Build query string with filters
   const params = new URLSearchParams({
     page: page.toString(),
-    limit: limit.toString(),
-    sortField: "createdAt",
-    sortDirection: "desc",
+    limit: isReadyToShip ? "100" : limit.toString(),
+    sortField: isReadyToShip ? "processedAt" : "createdAt",
+    sortDirection: isReadyToShip ? "asc" : "desc",
   });
 
   // Add filter parameters
@@ -70,7 +72,7 @@ async function getOrders(
   if (filters?.deadlineStatus && filters.deadlineStatus !== "all") {
     params.append("deadlineStatus", filters.deadlineStatus);
   }
-  if (filters?.maxWeight) {
+  if (filters?.maxWeight && !isReadyToShip) {
     params.append("maxWeight", filters.maxWeight);
   }
 
@@ -114,12 +116,55 @@ export default function Page() {
       try {
         setLoading(true);
         const data = await getOrders(page, limit, currentFilters);
-        const docs = data.orders || [];
+        let docs = data.orders || [];
 
-        setTotalPages(data.pagination.totalPages);
-        setHasNextPage(data.pagination.hasNextPage);
-        setHasPrevPage(data.pagination.hasPrevPage);
-        setTotalCount(data.pagination.totalCount);
+        const isReadyToShip =
+          currentFilters.maxWeight === "1200" &&
+          currentFilters.statuses.includes("Completed");
+
+        if (isReadyToShip) {
+          let cumulativeWeight = 0;
+          const filteredDocs: any[] = [];
+
+          for (const doc of docs) {
+            // Re-calculate overall status logic to be absolutely sure
+            const allStagesComplete = doc.lineItems?.every(
+              (item: any) =>
+                item.frameCuttingStatus === "Complete" &&
+                item.meshCuttingStatus === "Complete" &&
+                item.qualityStatus === "Complete" &&
+                item.assemblyStatus === "Complete" &&
+                item.packagingStatus === "Complete"
+            );
+
+            // Strictly only allow "Completed" orders (All stages Complete + Packed)
+            // Skip "In Transit" or "In Progress"
+            if (!allStagesComplete || doc.shippingStatus !== "Packed") {
+              continue;
+            }
+
+            // Calculate weight based on boxes
+            const orderWeight = doc.boxes?.reduce((acc: number, box: any) => acc + (box.weight || 0), 0) || 0;
+
+            if (cumulativeWeight + orderWeight <= 1200) {
+              filteredDocs.push(doc);
+              cumulativeWeight += orderWeight;
+            } else {
+              // Limit reached, skip this order and try the next one
+              continue;
+            }
+          }
+          docs = filteredDocs;
+          setTotalCount(docs.length);
+          setTotalPages(1);
+          setHasNextPage(false);
+          setHasPrevPage(false);
+        } else {
+          setTotalPages(data.pagination.totalPages);
+          setHasNextPage(data.pagination.hasNextPage);
+          setHasPrevPage(data.pagination.hasPrevPage);
+          setTotalCount(data.pagination.totalCount);
+        }
 
         const mapped = mapOrders(docs);
         setOrders(mapped);

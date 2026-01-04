@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Search, X, Truck } from "lucide-react";
+import { useTranslation } from "@/contexts/TranslationContext";
 
 interface OrderFiltersProps {
   onFilterChange: (filters: FilterState) => void;
@@ -28,6 +29,7 @@ export interface FilterState {
 }
 
 const OrderFilters = ({ onFilterChange, role }: OrderFiltersProps) => {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState<FilterState>({
     orderNumber: "",
     stores: [],
@@ -43,7 +45,7 @@ const OrderFilters = ({ onFilterChange, role }: OrderFiltersProps) => {
 
   const stores = [".nl", ".de", ".dk", ".fr", ".uk"];
   // New overall order statuses
-  const statuses = ["Pending", "In Progress", "Completed"];
+  const statuses = ["Pending", "In Progress", "Completed", "In Transit"];
 
   // Clean up timeout on unmount
   useEffect(() => {
@@ -273,9 +275,9 @@ const OrderFilters = ({ onFilterChange, role }: OrderFiltersProps) => {
                   }
                 }}
                 className={`w-full gap-2 hover:cursor-pointer ${filters.maxWeight === "1200" &&
-                    filters.statuses.includes("Completed")
-                    ? "bg-green-600 hover:bg-green-700 text-white border-none shadow-md"
-                    : ""
+                  filters.statuses.includes("Completed")
+                  ? "bg-green-600 hover:bg-green-700 text-white border-none shadow-md"
+                  : ""
                   }`}
               >
                 <Truck className="h-4 w-4" />
